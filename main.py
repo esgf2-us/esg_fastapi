@@ -608,7 +608,7 @@ async def query(
     response_time = time.time() - response_time
     solr_response = globus_response_to_solr(
         globus_response,
-        QTime=int(response_time * 100),
+        QTime=int(response_time * 1000),
         search=search,
     )
     return solr_response
