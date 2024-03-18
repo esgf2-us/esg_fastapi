@@ -1,3 +1,4 @@
+import pytest
 import requests
 
 SOLR_BASE = "http://esgf-node.ornl.gov/esg-search/search"
@@ -13,12 +14,42 @@ def esg_search(base_url, **search):
     return response.json()
 
 
-def compare_response(r1, r2) -> bool:
-    """Are these reponses the 'same'?"""
-    assert not set(r1.keys()) ^ set(r2.keys())
+def compare_facets(r1, r2):
+    """Same facets and counts?"""
+
+    def _parse_facets(response):
+        """Extract facets and counts into a easier structure to compare."""
+        facets = response["facet_counts"]["facet_fields"]
+        out = {}
+        for key, value in facets.items():
+            out[key] = {label: count for label, count in zip(value[::2], value[1::2])}
+        return out
+
+    f1 = _parse_facets(r1)
+    f2 = _parse_facets(r2)
+    assert not f1.keys() ^ f2.keys()
+    for f in f1.keys() & f2.keys():
+        assert not f1[f].keys() ^ f2[f].keys()
+        for key, value in f1[f].items():
+            assert value == f2[f][key]
 
 
-q = {"project": "CMIP3", "time_frequency": "mon"}
-r1 = esg_search(SOLR_BASE, **q)
-r2 = esg_search(LOCAL_BASE, **q)
-compare_response(r1, r2)
+def compare_basic(r1, r2):
+    """Basic info?"""
+    # general structure checks
+    assert not r1.keys() ^ r2.keys()
+    assert r1["response"]["numFound"] == r2["response"]["numFound"]
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        {"project": "CMIP3", "time_frequency": "mon", "facets": "experiment,realm"},
+        {"project": "CMIP5", "time_frequency": "yr", "facets": "experiment,model"},
+    ],
+)
+def test_queries(query):
+    r1 = esg_search(SOLR_BASE, **query)
+    r2 = esg_search(LOCAL_BASE, **query)
+    compare_basic(r1, r2)
+    compare_facets(r1, r2)

@@ -150,10 +150,14 @@ def globus_response_to_solr(
             "docs": docs,
         },
     }
+
+    # ???
+    ret["facet_counts"] = {
+        f"facet_{category}": {}
+        for category in ["fields", "queries", "ranges", "intervals", "heatmaps"]
+    }
     if len(facet_map) > 0:
-        ret["facet_counts"] = {"facet_fields": facet_map}
-        for category in ["queries", "ranges", "intervals", "heatmaps"]:  # ???
-            ret["facet_counts"][f"facet_{category}"] = {}
+        ret["facet_counts"]["facet_fields"] = facet_map
     return ret
 
 
