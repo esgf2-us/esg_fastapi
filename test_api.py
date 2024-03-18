@@ -44,8 +44,23 @@ def compare_basic(r1, r2):
 @pytest.mark.parametrize(
     "query",
     [
-        {"project": "CMIP3", "time_frequency": "mon", "facets": "experiment,realm"},
-        {"project": "CMIP5", "time_frequency": "yr", "facets": "experiment,model"},
+        {
+            "facets": "project",
+            "limit": 0,
+        },
+        {
+            "project": "CMIP3",
+            "time_frequency": "mon",
+            "facets": "experiment,realm",
+            "type": "File",
+            "latest": True,
+        },
+        {
+            "project": "CMIP6",
+            "time_frequency": "day",
+            "facets": "experiment,model",
+            "replica": False,
+        },
     ],
 )
 def test_queries(query):
