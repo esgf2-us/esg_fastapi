@@ -587,9 +587,9 @@ async def query(
         Query(description="enable to include replicas in the search results"),
     ] = None,
     latest: Annotated[
-        bool,
+        bool | None,
         Query(description="enable to only return the latest versions"),
-    ] = True,
+    ] = None,
     distrib: Annotated[
         bool,
         Query(description="enable to search across all federated nodes"),
