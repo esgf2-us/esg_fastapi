@@ -61,6 +61,10 @@ def compare_basic(r1, r2):
             "facets": "experiment,model",
             "replica": False,
         },
+        {
+            "query": "temperature",
+            "facets": "variable_id",
+        },
     ],
 )
 def test_queries(query):
