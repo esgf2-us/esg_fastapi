@@ -598,6 +598,12 @@ async def query(
         str | None,
         Query(description=""),
     ] = None,
+    dataset_id: Annotated[
+        str | None,
+        Query(
+            description="For file records, the dataset to which they are associated."
+        ),
+    ] = None,
 ):
     search = {
         key: value for key, value in locals().items() if value is not None
