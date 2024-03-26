@@ -1,0 +1,55 @@
+{
+    "request": {
+        "format": "application/solr.json",
+        "query": "\"\"",
+        "limit": 0
+    },
+    "globus_response": {
+        "total": 0,
+        "gmeta": [],
+        "@datatype": "GSearchResult",
+        "@version": "2017-09-01",
+        "offset": 0,
+        "count": 0,
+        "has_next_page": "True"
+    },
+    "esgsearch_response": {
+        "responseHeader": {
+            "status": 0,
+            "QTime": 2,
+            "params": {
+                "df": "text",
+                "q.alt": "*:*",
+                "indent": "true",
+                "echoParams": "all",
+                "fl": "*,score",
+                "start": "0",
+                "fq": "type:Dataset",
+                "rows": "10",
+                "q": "\"\"",
+                "shards": "esgf-data-node-solr-query:8983/solr/datasets",
+                "tie": "0.01",
+                "facet.limit": "-1",
+                "qf": "text",
+                "facet.method": "enum",
+                "facet.mincount": "1",
+                "wt": "json",
+                "facet": "true",
+                "facet.sort": "lex"
+            }
+        },
+        "response": {
+            "numFound": 0,
+            "start": 0,
+            "maxScore": 0.0,
+            "docs": []
+        },
+        "facet_counts": {
+            "facet_queries": {},
+            "facet_fields": {},
+            "facet_ranges": {},
+            "facet_intervals": {},
+            "facet_heatmaps": {}
+        }
+    }
+}
