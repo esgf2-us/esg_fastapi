@@ -1,9 +1,9 @@
 # esg_fastapi
 
 ```bash
-pip install -r requirements
+poetry install
 ```
 
 ```bash
-uvicorn main:app --reload
+uvicorn esg_fastapi.api --reload
 ```
