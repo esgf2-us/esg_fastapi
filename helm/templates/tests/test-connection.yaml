@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "esg-fastapi.fullname" . }}-test-connection"
+  labels:
+    {{- include "esg-fastapi.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['{{ include "esg-fastapi.fullname" . }}:{{ .Values.service.port }}']
+  restartPolicy: Never
