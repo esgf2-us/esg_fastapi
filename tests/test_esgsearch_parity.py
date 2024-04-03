@@ -11,7 +11,7 @@ from pytest_mock import MockerFixture
 
 from esg_fastapi import api
 
-scenarios("Features")
+scenarios("ESGSearch_Parity")
 
 
 class RequestResponseFixture(TypedDict):
