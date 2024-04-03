@@ -24,6 +24,10 @@ select = ["E4", "E7", "E9", "F", "D", "UP", "ANN", "ASYNC", "S", "B", "T20", "PT
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
+[tool.ruff.lint.per-file-ignores]
+# Ignore `S101` (Use of `assert` detected) in tests.
+"tests/*" = ["S101"]
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
