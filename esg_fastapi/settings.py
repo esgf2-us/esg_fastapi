@@ -2,14 +2,32 @@
 
 import sys
 from types import ModuleType
-from typing import cast
+from typing import TYPE_CHECKING
 from uuid import UUID
 
+from annotated_types import T
 from pydantic import UUID4, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class ClassModule:
+def type_of(baseclass: T) -> T:
+    """Inherit from `baseclass` only for type checking purposes.
+
+    This allows informing type checkers that the inheriting class ducktypes
+    as the given `baseclass` without actually inheriting from it.
+
+    Notes:
+    - `typing.Protocol` is the right answer to this problem, but `sys.modules.__setitem__`
+      currently checks for the ModuleType directly rather than a Protocol.
+    - `pydantic_settings.BaseSettings` can't inherit from `ModuleType` due to conflicts
+      in its use of `__slots__`
+    """
+    if TYPE_CHECKING:
+        return baseclass
+    return object
+
+
+class ClassModule(type_of(ModuleType)):
     """Mixin class that allows a subclass to pretend to be a Module.
 
     This isn't required for the class to be used as intended, but these
@@ -36,4 +54,4 @@ class Settings(BaseSettings, ClassModule):
     )
 
 
-sys.modules[__name__] = cast(ModuleType, Settings())
+sys.modules[__name__] = Settings()
