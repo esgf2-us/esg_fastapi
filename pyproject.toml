@@ -27,6 +27,10 @@ convention = "google"
 [tool.ruff.lint.per-file-ignores]
 # Ignore `S101` (Use of `assert` detected) in tests.
 "tests/*" = ["S101"]
+"test_*.py" = ["S101"]
+
+[tool.pytest.ini_options]
+bdd_features_base_dir = "features/"
 
 [build-system]
 requires = ["poetry-core"]
