@@ -11,7 +11,7 @@ This provides an easy way to validate and serialize the API requests and respons
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated, Any, Literal, TypeGuard, cast
+from typing import Annotated, Any, Literal, cast
 
 from annotated_types import T
 from fastapi import Query
@@ -26,76 +26,12 @@ from pydantic import (
 )
 from pydantic_core import Url
 
-
-def ensure_list(value: T) -> T | list[T]:
-    """If value is a list, return as is. Otherwise, wrap it in a list.
-
-    Args:
-        value (T): The value to be ensured as a list.
-
-    Returns:
-        list: Either the original list passed in, or the passed value wrapped in a list.
-
-    Raises:
-        TypeError: If the passed value is not a list and cannot be converted to one.
-
-    Examples:
-        >>> ensure_list(123)
-        [123]
-        >>> ensure_list([123, 456])
-        [123, 456]
-    """
-    if isinstance(value, list):
-        return value
-    else:
-        return [value]
-
-
-def one_or_list(value: list[T] | T) -> T | list[T]:
-    """Unwrap length 1 lists.
-
-    This function takes a value that can be either a single item or a list of items. If the passed value is a list of length 1, the function returns the single item in the list. Otherwise, it returns the original list.
-
-    Args:
-        value (list[T] | T): The value to be unwrapped.
-
-    Returns:
-        T | list[T]: If the passed list is length 1, the function returns the single item in the list. Otherwise, it returns the original list.
-
-    Raises:
-        TypeError: If the passed value is neither a single item nor a list of items.
-
-    Example:
-        >>> one_or_list([1, 2, 3])
-        [1, 2, 3]
-        >>> one_or_list(4)
-        4
-        >>> one_or_list("hello")
-        'hello'
-        >>> one_or_list([1])
-        1
-    """
-    if is_list(value) and len(value) == 1:
-        return value[0]
-    return value
-
+from esg_fastapi.utils import ensure_list, one_or_list
 
 MultiValued = Annotated[list[T], BeforeValidator(ensure_list), Query()]
 Stringified = Annotated[T, AfterValidator(lambda x: str(x))]
 LowerCased = Annotated[T, AfterValidator(lambda x: x.lower())]
 SolrFQ = Annotated[T, BeforeValidator(one_or_list)]
-
-
-def is_list(value: T) -> TypeGuard[list]:
-    """TypeGuard based on whether the value is a list.
-
-    Parameters:
-    value (T): The value to be checked.
-
-    Returns:
-    TypeGuard[list]: Returns True if the value is a list, otherwise False.
-    """
-    return isinstance(value, list)
 
 
 class ESGSearchQuery(BaseModel):
