@@ -1,4 +1,7 @@
+"""Starting point/base for the ESG FastAPI service and it's versions and components."""
+
 import time
+from typing import Self
 
 from fastapi import Depends, FastAPI
 from globus_sdk import SearchClient
@@ -30,7 +33,17 @@ app.router.tags = ["v1"]
 
 
 @app.get("/")
-async def query_by_facets(esg_search_query: ESGSearchQuery = Depends()):
+async def query_by_facets(
+    esg_search_query: ESGSearchQuery = Depends(),
+) -> ESGSearchResponse:
+    """Search the ESGF Globus Search endpoint with a query and response compatible with the ESG Search API.
+
+    Args:
+        esg_search_query (ESGSearchQuery): A model instance representing the search query parameters.
+
+    Returns:
+        ESGSearchResponse: A model instance representing the search results, including the response header.
+    """
     globus_query_args = {
         "q": esg_search_query.query,
         "limit": esg_search_query.limit,
@@ -111,10 +124,26 @@ async def query_by_facets(esg_search_query: ESGSearchQuery = Depends()):
 
 
 class Timer:
-    def __enter__(self):
+    """Context manager for timing the seconds elapsed during a context.
+
+    The `Timer` context manager is used to measure the time taken for a block of code to execute.
+
+    Attributes:
+        start_time (int): The start time of the context in nanoseconds.
+        end_time (int): The end time of the context in nanoseconds.
+        time (int): The time taken by the context in seconds.
+    """
+
+    def __enter__(self: Self) -> Self:
+        """Open the context and start the timer.
+
+        Returns:
+            Timer: Exposes the start, end, and delta in seconds of the context.
+        """
         self.start_time = time.monotonic_ns()
         return self
 
-    def __exit__(self, ex_typ, ex_val, traceback):
+    def __exit__(self: Self, ex_typ, ex_val, traceback) -> None:
+        """Close the context and stop the timer."""
         self.end_time = time.monotonic_ns()
         self.time = int((self.end_time - self.start_time) // 1e9)

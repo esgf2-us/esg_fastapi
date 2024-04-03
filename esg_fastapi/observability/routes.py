@@ -1,3 +1,5 @@
+"""Routes related to the Observability component."""
+
 from fastapi import FastAPI
 
 from .models import ProbeResponse
@@ -23,9 +25,19 @@ app.router.tags = ["Observability"]
 
 @app.get("/healthz/liveness", tags=["Kubernetes"])
 async def liveness_probe() -> ProbeResponse:
+    """Reports liveness status to Kubernetes controller.
+
+    Returns:
+        ProbeResponse: {'status': 'live'}
+    """
     return ProbeResponse(status="live")
 
 
 @app.get("/healthz/readiness", tags=["Kubernetes"])
 async def readiness_probe() -> ProbeResponse:
+    """Reports liveness status to Kubernetes controller.
+
+    Returns:
+        ProbeResponse: {'status': 'ready'}
+    """
     return ProbeResponse(status="ready")

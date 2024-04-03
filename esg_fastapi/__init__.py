@@ -1,5 +1,5 @@
-"""
-A REST API for Globus-based searches that mimics esg-search.
+"""A REST API for Globus-based searches that mimics esg-search.
+
 This API is so that community tools that are based on the esg-search
 RESTful API need not change to be compatible with the new Globus indices.
 If you are designing a new project, you should look to use the globus-sdk
