@@ -1,7 +1,8 @@
 """Starting point/base for the ESG FastAPI service and it's versions and components."""
 
 import time
-from typing import Self
+from types import TracebackType
+from typing import Optional, Self, Type
 
 from fastapi import Depends, FastAPI
 from globus_sdk import SearchClient
@@ -31,10 +32,12 @@ app = FastAPI(
 )
 app.router.tags = ["v1"]
 
+dependency_injector = Depends()
+
 
 @app.get("/")
 async def query_by_facets(
-    esg_search_query: ESGSearchQuery = Depends(),
+    esg_search_query: ESGSearchQuery = dependency_injector,
 ) -> ESGSearchResponse:
     """Search the ESGF Globus Search endpoint with a query and response compatible with the ESG Search API.
 
@@ -143,7 +146,12 @@ class Timer:
         self.start_time = time.monotonic_ns()
         return self
 
-    def __exit__(self: Self, ex_typ, ex_val, traceback) -> None:
+    def __exit__(
+        self: Self,
+        ex_typ: Optional[Type[BaseException]],
+        ex_val: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
         """Close the context and stop the timer."""
         self.end_time = time.monotonic_ns()
         self.time = int((self.end_time - self.start_time) // 1e9)

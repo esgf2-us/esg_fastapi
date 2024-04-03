@@ -16,6 +16,7 @@ from typing import Annotated, Any, Literal, TypeGuard, cast
 from annotated_types import T
 from fastapi import Query
 from pydantic import (
+    AfterValidator,
     BaseModel,
     BeforeValidator,
     ConfigDict,
@@ -80,8 +81,8 @@ def one_or_list(value: list[T] | T) -> T | list[T]:
 
 
 MultiValued = Annotated[list[T], BeforeValidator(ensure_list), Query()]
-BoolStr = Annotated[T, BeforeValidator(lambda x: str(x).lower())]
-IntStr = Annotated[T, BeforeValidator(lambda x: str(x))]
+Stringified = Annotated[T, AfterValidator(lambda x: str(x))]
+LowerCased = Annotated[T, AfterValidator(lambda x: x.lower())]
 SolrFQ = Annotated[T, BeforeValidator(one_or_list)]
 
 
@@ -562,12 +563,13 @@ class ESGSearchResultParams(BaseModel):
         facet_limit (Decimal): The maximum number of facet values to return.
         qf (str): The query field to use for searching.
         facet_method (str): The method to use for faceting.
-        facet_mincount (IntStr): The minimum count required for a facet value to be included in the response.
-        facet (BoolStr): A boolean flag indicating whether to include facet values in the response.
+        facet_mincount (Stringified[int]): The minimum count required for a facet value to be included in the response.
+        facet (LowerCased[Stringified[bool]]): A boolean flag indicating whether to include facet values in the response.
         wt (Literal["json", "xml"]): The format of the response.
         facet_sort (str): The sorting method to use for facet values.
     """
 
+    model_config = ConfigDict(validate_default=True)
     facet_field: None | list[str] = Field(
         alias="facet.field", default=None, exclude=True
     )
@@ -628,11 +630,11 @@ class ESGSearchResultParams(BaseModel):
     """
     The `facet_method` attribute is a string representing the method to use for faceting. Its default value is `"enum"`.
     """
-    facet_mincount: IntStr = Field(alias="facet.mincount", default=1)
+    facet_mincount: Stringified[int] = Field(alias="facet.mincount", default=1)
     """
     The `facet_mincount` attribute is an integer representing the minimum count required for a facet value to be included in the response. Its default value is `1`.
     """
-    facet: BoolStr = "true"
+    facet: LowerCased[Stringified[bool]] = True
     """
     The `facet` attribute is a boolean flag indicating whether to include facet values in the response. Its default value is `"true"`.
     """
