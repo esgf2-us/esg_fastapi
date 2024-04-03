@@ -1,13 +1,21 @@
+"""Create a Pydantic settings object that can be imported."""
+
 import sys
 from types import ModuleType
-from typing import Any, cast
+from typing import cast
 from uuid import UUID
 
-from pydantic import UUID4, Field, ValidationInfo, field_validator
+from pydantic import UUID4, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class ClassModule:
+    """Mixin class that allows a subclass to pretend to be a Module.
+
+    This isn't required for the class to be used as intended, but these
+    attributes make the class instance adhere to the PEP module interface.
+    """
+
     __path__ = []
     __file__ = __file__
     __cached__ = __cached__
@@ -15,16 +23,9 @@ class ClassModule:
 
 
 class Settings(BaseSettings, ClassModule):
-    model_config = SettingsConfigDict(env_prefix="ESG_FASTAPI_")
+    """An importable Pydantic Settings object."""
 
-    @field_validator("*", mode="after")
-    @classmethod
-    def add_defaults_to_examples(cls, v: Any, info: ValidationInfo) -> Any:
-        """If a Field has a default but no examples, use the default as an example."""
-        current_field = cls.model_fields[info.field_name]  # type: ignore
-        if current_field.examples is None and current_field.default is not None:
-            current_field.examples = [current_field.default]
-        return v
+    model_config = SettingsConfigDict(env_prefix="ESG_FASTAPI_")
 
     # Globus functions are typed to accept UUIDs so use the coercion for validation
     # ref: https://github.com/globus/globus-sdk-python/blob/b6fa2edc7e81201494d150585078a99d3926dfc7/src/globus_sdk/_types.py#L18
