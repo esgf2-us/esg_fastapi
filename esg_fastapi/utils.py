@@ -22,7 +22,7 @@ def type_of(baseclass: T) -> T:
     return object
 
 
-def is_list(value: T) -> TypeGuard[list]:
+def is_list(value: object) -> TypeGuard[list]:
     """TypeGuard based on whether the value is a list.
 
     Parameters:
@@ -44,9 +44,6 @@ def one_or_list(value: list[T] | T) -> T | list[T]:
 
     Returns:
         T | list[T]: If the passed list is length 1, the function returns the single item in the list. Otherwise, it returns the original list.
-
-    Raises:
-        TypeError: If the passed value is neither a single item nor a list of items.
 
     Example:
         >>> one_or_list([1, 2, 3])
