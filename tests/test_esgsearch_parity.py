@@ -10,26 +10,32 @@ from pytest_bdd.parsers import parse
 from pytest_mock import MockerFixture
 
 from esg_fastapi import api
+from esg_fastapi.api.versions.v1.models import (
+    ESGSearchResponse,
+    GlobusSearchQuery,
+    GlobusSearchResult,
+)
 
 scenarios("ESGSearch_Parity")
 
 
-class RequestResponseFixture(TypedDict):
+class SearchParityFixture(TypedDict):
     """Type hint for example request/response fixtures loaded from JSON files."""
 
-    request: dict
-    globus_response: dict
-    esgsearch_response: dict
+    request: str
+    globus_query: GlobusSearchQuery
+    globus_response: GlobusSearchResult
+    esg_search_response: ESGSearchResponse
 
 
-class ComparisonFixture(RequestResponseFixture):
+class ComparisonFixture(SearchParityFixture):
     """RequestResponseFixture with fastapi_response populated."""
 
     fastapi_response: dict
 
 
 @given(parse("a {query_example}"), target_fixture="json_example")
-def load_example(query_example: Path) -> RequestResponseFixture:
+def load_example(query_example: Path) -> SearchParityFixture:
     """Load RequestResponseFixture from JSON file."""
     fixture_path = Path("tests", "fixtures", query_example)
     with fixture_path.open() as fixture:
@@ -37,9 +43,7 @@ def load_example(query_example: Path) -> RequestResponseFixture:
 
 
 @when("the request is sent to ESG FastAPI", target_fixture="responses")
-def send_request(
-    json_example: RequestResponseFixture, mocker: MockerFixture
-) -> ComparisonFixture:
+def send_request(json_example: SearchParityFixture, mocker: MockerFixture) -> ComparisonFixture:
     """Send request to ESG FastAPI and add its response to the fixture.
 
     Notes:
@@ -52,7 +56,14 @@ def send_request(
         "esg_fastapi.api.versions.v1.routes.SearchClient.post_search",
         return_value=mocker.Mock(data=json_example["globus_response"]),
     )
-    return {**json_example, "fastapi_response": client.get("/").json()}
+    response = client.get(
+        url="/",
+        params=json_example["request"],
+    ).json()
+    return {
+        **json_example,
+        "fastapi_response": response,
+    }
 
 
 @then("the ESG Fast API response should be the same as the ESG Search response")
@@ -60,11 +71,20 @@ def compare_responses(responses: ComparisonFixture) -> None:
     """Compare the ESG Fast API response to the ESG Search response to ensure that the responses are indistinguishable.
 
     Notes:
-    - Before comparison, we copy the query time from the ESG Search response to the FastAPI response. We do that in the test
-      so that we don't have to modify each test fixture to meet this expectation.
+    - We modify the fixtures during the test so that we don't have to remember for each fixture
     """
-    responses["fastapi_response"]["responseHeader"]["QTime"] = responses[
-        "esgsearch_response"
-    ]["responseHeader"]["QTime"]
+    for source in ["fastapi_response", "esg_search_response"]:
+        # Sort the fq and facet_fields lists before comparison
+        if isinstance(responses[source]["responseHeader"]["params"]["fq"], list):
+            responses[source]["responseHeader"]["params"]["fq"].sort()
+        responses[source]["facet_counts"]["facet_fields"] = sorted(responses[source]["facet_counts"]["facet_fields"])
 
-    assert responses["esgsearch_response"] == responses["fastapi_response"]
+        # Query time is expected to vary
+        responses[source]["responseHeader"]["QTime"] = 1
+
+        # Scoring is expected to vary
+        responses[source]["response"]["maxScore"] = 1
+        for doc in responses[source]["response"]["docs"]:
+            doc["score"] = 1
+
+    assert responses["esg_search_response"] == responses["fastapi_response"]

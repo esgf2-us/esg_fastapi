@@ -9,5 +9,9 @@ Feature: ESG Search Request/Response parity
         Then the ESG Fast API response should be the same as the ESG Search response
 
         Examples:
-            | query_example         |
-            | minimal_response.json |
+            | query_example                  |
+            | 1_record_dataset_response.json |
+            | 2_record_dataset_response.json |
+            | 1_file_metagrid_response.json  |
+            | metagrid_default_request.json  |
+            | minimal_response.json          |

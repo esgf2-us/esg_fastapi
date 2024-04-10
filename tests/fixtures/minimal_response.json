@@ -1,19 +1,31 @@
 {
-    "request": {
-        "format": "application/solr.json",
-        "query": "\"\"",
-        "limit": 0
+    "request": "format=application%2Fsolr%2Bjson&type=Dataset",
+    "globus_query": {
+        "q": null,
+        "advanced": true,
+        "limit": 0,
+        "offset": 0,
+        "result_format_version": "2019-08-27",
+        "filters": [
+            {
+                "type": "match_any",
+                "field_name": "type",
+                "values": [
+                    "Dataset"
+                ]
+            }
+        ],
+        "facets": null
     },
     "globus_response": {
-        "total": 0,
         "gmeta": [],
-        "@datatype": "GSearchResult",
-        "@version": "2017-09-01",
+        "facet_results": null,
         "offset": 0,
         "count": 0,
-        "has_next_page": "True"
+        "total": 9130715,
+        "has_next_page": true
     },
-    "esgsearch_response": {
+    "esg_search_response": {
         "responseHeader": {
             "status": 0,
             "QTime": 2,
@@ -25,24 +37,24 @@
                 "fl": "*,score",
                 "start": "0",
                 "fq": "type:Dataset",
-                "rows": "10",
-                "q": "\"\"",
+                "rows": "0",
+                "q": "*:*",
                 "shards": "esgf-data-node-solr-query:8983/solr/datasets",
                 "tie": "0.01",
                 "facet.limit": "-1",
                 "qf": "text",
                 "facet.method": "enum",
                 "facet.mincount": "1",
-                "wt": "json",
                 "facet": "true",
+                "wt": "json",
                 "facet.sort": "lex"
             }
         },
         "response": {
-            "numFound": 0,
+            "numFound": 9130715,
             "start": 0,
-            "maxScore": 0.0,
-            "docs": []
+            "docs": [],
+            "maxScore": null
         },
         "facet_counts": {
             "facet_queries": {},

@@ -1,19 +1,16 @@
 """Starting point/base for the ESG FastAPI service and it's versions and components."""
 
-import time
-from types import TracebackType
-from typing import Optional, Self, Type
-
-from fastapi import Depends, FastAPI
+import requests
+from fastapi import Depends, FastAPI, Request
 from globus_sdk import SearchClient
+from typing_extensions import TypedDict
 
 from esg_fastapi import settings
+from esg_fastapi.utils import Timer
 
 from .models import (
     ESGSearchQuery,
     ESGSearchResponse,
-    GlobusFacet,
-    GlobusMatchFilter,
     GlobusSearchQuery,
     GlobusSearchResult,
 )
@@ -36,122 +33,110 @@ dependency_injector = Depends()
 
 
 @app.get("/")
-async def query_by_facets(
-    esg_search_query: ESGSearchQuery = dependency_injector,
-) -> ESGSearchResponse:
-    """Search the ESGF Globus Search endpoint with a query and response compatible with the ESG Search API.
+async def search_globus(q: ESGSearchQuery = dependency_injector) -> ESGSearchResponse:
+    """This function performs a search using the Globus API based on the provided ESG search query.
 
-    Args:
-        esg_search_query (ESGSearchQuery): A model instance representing the search query parameters.
+    Parameters:
+    - q (ESGSearchQuery): The ESG search query object.
 
     Returns:
-        ESGSearchResponse: A model instance representing the search results, including the response header.
+    - ESGSearchResponse: A response object containing the search results from the Globus API.
+
+    The function first constructs a Globus search query from the ESG query. It then sends a POST request to the Globus search endpoint with the constructed query.
+
+    The function then constructs a response object from the received data, adhering to the format returned by ESG Search.
+
+    The response object contains the following fields:
+    - responseHeader: Contains information about the search query and its execution, such as the query time and the number of returned results.
+    - response: Contains the actual search results, including the total number of results, the starting offset, and the actual search results.
+    - facet_counts: Contains the counts of distinct values for each facet in the search results.
     """
-    globus_query_args = {
-        "q": esg_search_query.query,
-        "limit": esg_search_query.limit,
-        "offset": esg_search_query.offset,
-    }
-
-    if esg_search_query.facets:
-        globus_query_args["facets"] = [
-            GlobusFacet(name=facet, field_name=facet)
-            for facet in esg_search_query.facets.split(",")
-        ]
-
-    globus_query_args["filters"] = [
-        GlobusMatchFilter(field_name=key, values=value)
-        for key, value in esg_search_query.model_dump(
-            exclude_none=True,
-            exclude={
-                # These aren't treated as facets
-                "query",
-                "limit",
-                "offset",
-                "facets",
-                # We haven't decided how to handle these yet
-                "format",
-                "distrub",
-            },
-        ).items()
-    ]
-    globus_query = GlobusSearchQuery.model_validate(globus_query_args)
-
+    globus_query = GlobusSearchQuery.from_esg_search_query(q)
     with Timer() as t:
-        raw_globus_response = (
-            SearchClient()
-            .post_search(
-                settings.globus_search_index, globus_query.model_dump(exclude_none=True)
-            )
-            .data
+        globus_response = GlobusSearchResult.model_validate(
+            SearchClient().post_search(settings.globus_search_index, globus_query.model_dump(exclude_none=True)).data
         )
-        globus_response = GlobusSearchResult.model_validate(raw_globus_response)
-    response_data = {
-        "responseHeader": {
-            "QTime": t.time,
-            "params": {
-                "q": esg_search_query.query,
-                "start": globus_response.offset,
-                "fq": [
-                    f"{facet}:{value}"
-                    for facet, value in esg_search_query.model_dump(
-                        exclude_none=True,
-                        exclude={
-                            "query",
-                            "limit",
-                            "offset",
-                            "format",
-                            "facets",
-                            "latest",
-                        },
-                    ).items()
-                ],
+
+    return ESGSearchResponse.model_validate(
+        {
+            "responseHeader": {
+                "QTime": t.time,
+                "params": {
+                    "q": q.query,
+                    "start": q.offset,
+                    "rows": q.limit,
+                    "fq": q,
+                    "shards": f"esgf-data-node-solr-query:8983/solr/{q.type.lower()}s",
+                },
             },
-        },
-        "response": {
-            "numFound": globus_response.total,
-            "start": globus_response.offset,
-            "docs": [
-                {**record.entries[0].content | {"id": record.subject}}
-                for record in globus_response.gmeta
-            ],
-        },
-    }
-
-    if globus_response.facet_results is not None:
-        response_data["responseHeader"]["params"]["facet_field"] = [
-            result.name for result in globus_response.facet_results
-        ]
-
-    return ESGSearchResponse.model_validate(response_data)
+            "response": {
+                "numFound": globus_response.total,
+                "start": globus_response.offset,
+                "docs": globus_response.gmeta,
+            },
+            "facet_counts": globus_response.facet_results,
+        }
+    )
 
 
-class Timer:
-    """Context manager for timing the seconds elapsed during a context.
+class SearchParityFixture(TypedDict):
+    """A dictionary containing the request, queries, and responses from both ESG and Globus searches.
 
-    The `Timer` context manager is used to measure the time taken for a block of code to execute.
+    This allows us to test FastAPI version returns the same results as ESG Search, assuming the same result records
+    were returned by the Globus search endpoint.
 
     Attributes:
-        start_time (int): The start time of the context in nanoseconds.
-        end_time (int): The end time of the context in nanoseconds.
-        time (int): The time taken by the context in seconds.
+        request (str): The raw HTTP query parameters used to generate the Globus and ESG Search responses.
+        globus_query (GlobusSearchQuery): The Globus search query object constructed from the ESG query.
+        globus_response (GlobusSearchResult): The response from the Globus search endpoint.
+        esg_search_response (ESGSearchResponse): The response from the ESG search endpoint.
     """
 
-    def __enter__(self: Self) -> Self:
-        """Open the context and start the timer.
+    request: str
+    globus_query: GlobusSearchQuery
+    globus_response: GlobusSearchResult
+    esg_search_response: ESGSearchResponse
 
-        Returns:
-            Timer: Exposes the start, end, and delta in seconds of the context.
-        """
-        self.start_time = time.monotonic_ns()
-        return self
 
-    def __exit__(
-        self: Self,
-        ex_typ: Optional[Type[BaseException]],
-        ex_val: Optional[BaseException],
-        traceback: Optional[TracebackType],
-    ) -> None:
-        """Close the context and stop the timer."""
-        self.end_time = time.monotonic_ns()
-        self.time = int((self.end_time - self.start_time) // 1e9)
+@app.get("/make_fixture")
+def make_fixture(raw_request: Request, q: ESGSearchQuery = dependency_injector) -> SearchParityFixture:
+    """This function makes a fixture for comparing ESG and Globus search results.
+
+    Parameters:
+    - raw_request (Request): The raw HTTP request object.
+    - q (ESGSearchQuery): The ESG search query object.
+
+    Returns:
+    - SearchParityFixture: A dictionary containing the request, queries, and responses from both ESG and Globus searches.
+
+    The function first sends an HTTP GET request to the ESG search endpoint with the provided query parameters.
+    It then constructs a Globus search query from the ESG query and sends a POST request to the Globus search endpoint.
+
+    The function then constructs a theoretical response for the Globus search results, assuming that the ESG and Globus searches returned the same records.
+
+    Finally, the function returns a dictionary containing the request, queries, and responses from both ESG and Globus searches.
+    """
+    esg_search_response = requests.get(  # noqa: S113 -- Only timeout if the globus call times out.
+        "https://esgf-node.ornl.gov/proxy/search", params=q.model_dump(exclude_none=True)
+    ).json()
+    globus_query = GlobusSearchQuery.from_esg_search_query(q)
+    globus_response = (
+        SearchClient().post_search(settings.globus_search_index, globus_query.model_dump(exclude_none=True)).data
+    )
+
+    # Most test cases are unordered and so return different records between the globus and ESG searches.
+    # Here, we throw away the actual globus results and construct a theoretical response of what it should
+    # look like if the two searches had returned the same records.
+    # TODO: would it be better to take the ESG result id's and add extra filters to the globus search to
+    #       ensure it returns the same records?
+    globus_response["gmeta"] = [
+        {"subject": doc["id"], "entries": [{"content": doc, "entry_id": doc["type"], "matched_principal_sets": []}]}
+        for doc in esg_search_response["response"]["docs"]
+    ]
+
+    return {
+        "request": raw_request.scope["query_string"],
+        "globus_query": GlobusSearchQuery.from_esg_search_query(q),
+        "globus_response": globus_response,
+        "esg_search_response": esg_search_response,
+    }

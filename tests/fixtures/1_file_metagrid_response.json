@@ -1,0 +1,339 @@
+{
+  "request": "dataset_id=CMIP6.CMIP.CCCma.CanESM5-CanOE.1pctCO2.r1i1p2f1.Omon.hfbasin.gn.v20190429%7Ccrd-esgf-drc.ec.gc.ca&format=application%2Fsolr%2Bjson&type=File&offset=0&limit=1",
+  "globus_query": {
+    "q": "",
+    "advanced": true,
+    "limit": 1,
+    "offset": 0,
+    "result_format_version": "2019-08-27",
+    "filters": [
+      {
+        "type": "match_any",
+        "field_name": "dataset_id",
+        "values": [
+          "CMIP6.CMIP.CCCma.CanESM5-CanOE.1pctCO2.r1i1p2f1.Omon.hfbasin.gn.v20190429|crd-esgf-drc.ec.gc.ca"
+        ]
+      },
+      {
+        "type": "match_any",
+        "field_name": "type",
+        "values": [
+          "File"
+        ]
+      }
+    ],
+    "facets": null
+  },
+  "globus_response": {
+    "gmeta": [
+      {
+        "subject": "CMIP6.CMIP.CCCma.CanESM5-CanOE.1pctCO2.r1i1p2f1.Omon.hfbasin.gn.v20190429.hfbasin_Omon_CanESM5-CanOE_1pctCO2_r1i1p2f1_gn_185001-200012.nc|crd-esgf-drc.ec.gc.ca",
+        "entries": [
+          {
+            "content": {
+              "master_id": "CMIP6.CMIP.CCCma.CanESM5-CanOE.1pctCO2.r1i1p2f1.Omon.hfbasin.gn.hfbasin_Omon_CanESM5-CanOE_1pctCO2_r1i1p2f1_gn_185001-200012.nc",
+              "experiment_title": [
+                "1 percent per year increase in CO2"
+              ],
+              "replica": false,
+              "data_specs_version": [
+                "01.00.31"
+              ],
+              "variable_units": [
+                "W"
+              ],
+              "project": [
+                "CMIP6"
+              ],
+              "pid": [
+                "hdl:21.14100/be3a1612-4db6-338c-a4eb-f40b2cccade3"
+              ],
+              "table_id": [
+                "Omon"
+              ],
+              "type": "File",
+              "frequency": [
+                "mon"
+              ],
+              "institution_id": [
+                "CCCma"
+              ],
+              "variable_id": [
+                "hfbasin"
+              ],
+              "activity_id": [
+                "CMIP"
+              ],
+              "id": "CMIP6.CMIP.CCCma.CanESM5-CanOE.1pctCO2.r1i1p2f1.Omon.hfbasin.gn.v20190429.hfbasin_Omon_CanESM5-CanOE_1pctCO2_r1i1p2f1_gn_185001-200012.nc|crd-esgf-drc.ec.gc.ca",
+              "_timestamp": "2020-03-10T02:04:16.726Z",
+              "data_node": "crd-esgf-drc.ec.gc.ca",
+              "variable_long_name": [
+                "Northward Ocean Heat Transport"
+              ],
+              "dataset_id": "CMIP6.CMIP.CCCma.CanESM5-CanOE.1pctCO2.r1i1p2f1.Omon.hfbasin.gn.v20190429|crd-esgf-drc.ec.gc.ca",
+              "source_type": [
+                "AOGCM"
+              ],
+              "cf_standard_name": [
+                "northward_ocean_heat_transport"
+              ],
+              "version": "1",
+              "further_info_url": [
+                "https://furtherinfo.es-doc.org/CMIP6.CCCma.CanESM5-CanOE.1pctCO2.none.r1i1p2f1"
+              ],
+              "instance_id": "CMIP6.CMIP.CCCma.CanESM5-CanOE.1pctCO2.r1i1p2f1.Omon.hfbasin.gn.v20190429.hfbasin_Omon_CanESM5-CanOE_1pctCO2_r1i1p2f1_gn_185001-200012.nc",
+              "size": 4686043,
+              "grid_label": [
+                "gn"
+              ],
+              "nominal_resolution": [
+                "100 km"
+              ],
+              "citation_url": [
+                "http://cera-www.dkrz.de/WDCC/meta/CMIP6/CMIP6.CMIP.CCCma.CanESM5-CanOE.1pctCO2.r1i1p2f1.Omon.hfbasin.gn.v20190429.json"
+              ],
+              "directory_format_template_": [
+                "%(root)s/%(mip_era)s/%(activity_drs)s/%(institution_id)s/%(source_id)s/%(experiment_id)s/%(member_id)s/%(table_id)s/%(variable_id)s/%(grid_label)s/%(version)s"
+              ],
+              "index_node": "esgf-node.llnl.gov",
+              "title": "hfbasin_Omon_CanESM5-CanOE_1pctCO2_r1i1p2f1_gn_185001-200012.nc",
+              "retracted": false,
+              "checksum_type": [
+                "SHA256"
+              ],
+              "variant_label": [
+                "r1i1p2f1"
+              ],
+              "checksum": [
+                "2b65e4746dfa5c2f5133c960539cea4461fa4077ee644dc4526e7744fff57ef2"
+              ],
+              "tracking_id": [
+                "hdl:21.14100/73285a1d-5a8b-40ed-8344-ca8218adcbe8"
+              ],
+              "latest": true,
+              "timestamp": "2020-01-17T03:45:00Z",
+              "member_id": [
+                "r1i1p2f1"
+              ],
+              "sub_experiment_id": [
+                "none"
+              ],
+              "mip_era": [
+                "CMIP6"
+              ],
+              "product": [
+                "model-output"
+              ],
+              "model_cohort": [
+                "Registered"
+              ],
+              "experiment_id": [
+                "1pctCO2"
+              ],
+              "url": [
+                "http://crd-esgf-drc.ec.gc.ca/thredds/fileServer/esgA_dataroot/AR6/CMIP6/CMIP/CCCma/CanESM5-CanOE/1pctCO2/r1i1p2f1/Omon/hfbasin/gn/v20190429/hfbasin_Omon_CanESM5-CanOE_1pctCO2_r1i1p2f1_gn_185001-200012.nc|application/netcdf|HTTPServer",
+                "gsiftp://crd-esgf-drc.ec.gc.ca:2811//esgA_dataroot/AR6/CMIP6/CMIP/CCCma/CanESM5-CanOE/1pctCO2/r1i1p2f1/Omon/hfbasin/gn/v20190429/hfbasin_Omon_CanESM5-CanOE_1pctCO2_r1i1p2f1_gn_185001-200012.nc|application/gridftp|GridFTP",
+                "http://crd-esgf-drc.ec.gc.ca/thredds/dodsC/esgA_dataroot/AR6/CMIP6/CMIP/CCCma/CanESM5-CanOE/1pctCO2/r1i1p2f1/Omon/hfbasin/gn/v20190429/hfbasin_Omon_CanESM5-CanOE_1pctCO2_r1i1p2f1_gn_185001-200012.nc.html|application/opendap-html|OPENDAP"
+              ],
+              "activity_drs": [
+                "CMIP"
+              ],
+              "dataset_id_template_": [
+                "%(mip_era)s.%(activity_drs)s.%(institution_id)s.%(source_id)s.%(experiment_id)s.%(member_id)s.%(table_id)s.%(variable_id)s.%(grid_label)s"
+              ],
+              "_version_": 1660740810022322200,
+              "grid": [
+                "ORCA1 tripolar grid, 1 deg with refinement to 1/3 deg within 20 degrees of the equator; 361 x 290 longitude/latitude; 45 vertical levels; top grid cell 0-6.19 m"
+              ],
+              "variable": [
+                "hfbasin"
+              ],
+              "realm": [
+                "ocean"
+              ],
+              "source_id": [
+                "CanESM5-CanOE"
+              ]
+            },
+            "entry_id": "file",
+            "matched_principal_sets": []
+          }
+        ]
+      }
+    ],
+    "facet_results": null,
+    "offset": 0,
+    "count": 1,
+    "total": 1,
+    "has_next_page": false
+  },
+  "esg_search_response": {
+    "responseHeader": {
+      "status": 0,
+      "QTime": 4,
+      "params": {
+        "df": "text",
+        "q.alt": "*:*",
+        "indent": "true",
+        "echoParams": "all",
+        "fl": "*,score",
+        "start": "0",
+        "fq": [
+          "type:File",
+          "dataset_id:\"CMIP6.CMIP.CCCma.CanESM5-CanOE.1pctCO2.r1i1p2f1.Omon.hfbasin.gn.v20190429|crd-esgf-drc.ec.gc.ca\""
+        ],
+        "rows": "1",
+        "q": "*:*",
+        "shards": "esgf-data-node-solr-query:8983/solr/files",
+        "tie": "0.01",
+        "facet.limit": "-1",
+        "qf": "text",
+        "facet.method": "enum",
+        "facet.mincount": "1",
+        "facet": "true",
+        "wt": "json",
+        "facet.sort": "lex"
+      }
+    },
+    "response": {
+      "numFound": 1,
+      "start": 0,
+      "maxScore": 1,
+      "docs": [
+        {
+          "id": "CMIP6.CMIP.CCCma.CanESM5-CanOE.1pctCO2.r1i1p2f1.Omon.hfbasin.gn.v20190429.hfbasin_Omon_CanESM5-CanOE_1pctCO2_r1i1p2f1_gn_185001-200012.nc|crd-esgf-drc.ec.gc.ca",
+          "version": "1",
+          "activity_drs": [
+            "CMIP"
+          ],
+          "activity_id": [
+            "CMIP"
+          ],
+          "cf_standard_name": [
+            "northward_ocean_heat_transport"
+          ],
+          "checksum": [
+            "2b65e4746dfa5c2f5133c960539cea4461fa4077ee644dc4526e7744fff57ef2"
+          ],
+          "checksum_type": [
+            "SHA256"
+          ],
+          "citation_url": [
+            "http://cera-www.dkrz.de/WDCC/meta/CMIP6/CMIP6.CMIP.CCCma.CanESM5-CanOE.1pctCO2.r1i1p2f1.Omon.hfbasin.gn.v20190429.json"
+          ],
+          "data_node": "crd-esgf-drc.ec.gc.ca",
+          "data_specs_version": [
+            "01.00.31"
+          ],
+          "dataset_id": "CMIP6.CMIP.CCCma.CanESM5-CanOE.1pctCO2.r1i1p2f1.Omon.hfbasin.gn.v20190429|crd-esgf-drc.ec.gc.ca",
+          "dataset_id_template_": [
+            "%(mip_era)s.%(activity_drs)s.%(institution_id)s.%(source_id)s.%(experiment_id)s.%(member_id)s.%(table_id)s.%(variable_id)s.%(grid_label)s"
+          ],
+          "directory_format_template_": [
+            "%(root)s/%(mip_era)s/%(activity_drs)s/%(institution_id)s/%(source_id)s/%(experiment_id)s/%(member_id)s/%(table_id)s/%(variable_id)s/%(grid_label)s/%(version)s"
+          ],
+          "experiment_id": [
+            "1pctCO2"
+          ],
+          "experiment_title": [
+            "1 percent per year increase in CO2"
+          ],
+          "frequency": [
+            "mon"
+          ],
+          "further_info_url": [
+            "https://furtherinfo.es-doc.org/CMIP6.CCCma.CanESM5-CanOE.1pctCO2.none.r1i1p2f1"
+          ],
+          "grid": [
+            "ORCA1 tripolar grid, 1 deg with refinement to 1/3 deg within 20 degrees of the equator; 361 x 290 longitude/latitude; 45 vertical levels; top grid cell 0-6.19 m"
+          ],
+          "grid_label": [
+            "gn"
+          ],
+          "index_node": "esgf-node.llnl.gov",
+          "instance_id": "CMIP6.CMIP.CCCma.CanESM5-CanOE.1pctCO2.r1i1p2f1.Omon.hfbasin.gn.v20190429.hfbasin_Omon_CanESM5-CanOE_1pctCO2_r1i1p2f1_gn_185001-200012.nc",
+          "institution_id": [
+            "CCCma"
+          ],
+          "latest": true,
+          "master_id": "CMIP6.CMIP.CCCma.CanESM5-CanOE.1pctCO2.r1i1p2f1.Omon.hfbasin.gn.hfbasin_Omon_CanESM5-CanOE_1pctCO2_r1i1p2f1_gn_185001-200012.nc",
+          "member_id": [
+            "r1i1p2f1"
+          ],
+          "mip_era": [
+            "CMIP6"
+          ],
+          "model_cohort": [
+            "Registered"
+          ],
+          "nominal_resolution": [
+            "100 km"
+          ],
+          "pid": [
+            "hdl:21.14100/be3a1612-4db6-338c-a4eb-f40b2cccade3"
+          ],
+          "product": [
+            "model-output"
+          ],
+          "project": [
+            "CMIP6"
+          ],
+          "realm": [
+            "ocean"
+          ],
+          "replica": false,
+          "size": 4686043,
+          "source_id": [
+            "CanESM5-CanOE"
+          ],
+          "source_type": [
+            "AOGCM"
+          ],
+          "sub_experiment_id": [
+            "none"
+          ],
+          "table_id": [
+            "Omon"
+          ],
+          "timestamp": "2020-01-17T03:45:00Z",
+          "title": "hfbasin_Omon_CanESM5-CanOE_1pctCO2_r1i1p2f1_gn_185001-200012.nc",
+          "tracking_id": [
+            "hdl:21.14100/73285a1d-5a8b-40ed-8344-ca8218adcbe8"
+          ],
+          "type": "File",
+          "url": [
+            "http://crd-esgf-drc.ec.gc.ca/thredds/fileServer/esgA_dataroot/AR6/CMIP6/CMIP/CCCma/CanESM5-CanOE/1pctCO2/r1i1p2f1/Omon/hfbasin/gn/v20190429/hfbasin_Omon_CanESM5-CanOE_1pctCO2_r1i1p2f1_gn_185001-200012.nc|application/netcdf|HTTPServer",
+            "gsiftp://crd-esgf-drc.ec.gc.ca:2811//esgA_dataroot/AR6/CMIP6/CMIP/CCCma/CanESM5-CanOE/1pctCO2/r1i1p2f1/Omon/hfbasin/gn/v20190429/hfbasin_Omon_CanESM5-CanOE_1pctCO2_r1i1p2f1_gn_185001-200012.nc|application/gridftp|GridFTP",
+            "http://crd-esgf-drc.ec.gc.ca/thredds/dodsC/esgA_dataroot/AR6/CMIP6/CMIP/CCCma/CanESM5-CanOE/1pctCO2/r1i1p2f1/Omon/hfbasin/gn/v20190429/hfbasin_Omon_CanESM5-CanOE_1pctCO2_r1i1p2f1_gn_185001-200012.nc.html|application/opendap-html|OPENDAP"
+          ],
+          "variable": [
+            "hfbasin"
+          ],
+          "variable_id": [
+            "hfbasin"
+          ],
+          "variable_long_name": [
+            "Northward Ocean Heat Transport"
+          ],
+          "variable_units": [
+            "W"
+          ],
+          "variant_label": [
+            "r1i1p2f1"
+          ],
+          "_version_": 1660740810022322200,
+          "retracted": false,
+          "_timestamp": "2020-03-10T02:04:16.726Z",
+          "score": 0.75
+        }
+      ]
+    },
+    "facet_counts": {
+      "facet_queries": {},
+      "facet_fields": {},
+      "facet_ranges": {},
+      "facet_intervals": {},
+      "facet_heatmaps": {}
+    }
+  }
+}

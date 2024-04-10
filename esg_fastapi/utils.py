@@ -1,8 +1,41 @@
 """Utilities that don't fit well in other modules."""
 
-from typing import TYPE_CHECKING, TypeGuard
+import time
+from types import TracebackType
+from typing import TYPE_CHECKING, Any, Optional, Self, Type, TypeGuard
 
 from annotated_types import T
+
+
+class Timer:
+    """Context manager for timing the seconds elapsed during a context.
+
+    The `Timer` context manager is used to measure the time taken for a block of code to execute.
+
+    Attributes:
+        start_time (int): The start time of the context in nanoseconds.
+        end_time (int): The end time of the context in nanoseconds.
+        time (int): The time taken by the context in seconds.
+    """
+
+    def __enter__(self: Self) -> Self:
+        """Open the context and start the timer.
+
+        Returns:
+            Timer: Exposes the start, end, and delta in seconds of the context.
+        """
+        self.start_time = time.monotonic_ns()
+        return self
+
+    def __exit__(
+        self: Self,
+        ex_typ: Optional[Type[BaseException]],
+        ex_val: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
+        """Close the context and stop the timer."""
+        self.end_time = time.monotonic_ns()
+        self.time = int((self.end_time - self.start_time) // 1e9)
 
 
 def type_of(baseclass: T) -> T:
@@ -82,3 +115,30 @@ def ensure_list(value: T) -> T | list[T]:
         return value
     else:
         return [value]
+
+
+def quote_str(value: str) -> str:
+    r"""Wrap a string in double quotes.
+
+    Args:
+        value (str): The value to be wrapped in double quotes.
+
+    Returns:
+        str: The wrapped string.
+
+    Examples:
+        >>> quote_str("hello")
+        '"hello"'
+        >>> quote_str("hello'world")
+        '"hello'world"'
+    """
+    if not value.startswith('"') and not value.endswith('"'):
+        return f'"{value}"'
+    return value
+
+
+def format_fq_field(field: tuple[str, Any]) -> str:
+    """Conver key, value pairs to key:value str expected to be returned by Solr."""
+    quoted_fields = {"project", "dataset_id"}
+    key, value = field
+    return f"{key}:{quote_str(value) if key in quoted_fields else value}"
