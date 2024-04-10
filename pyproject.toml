@@ -34,6 +34,7 @@ convention = "google"
 
 [tool.pytest.ini_options]
 bdd_features_base_dir = "features/"
+addopts = "--cov --cov-report term-missing:skip-covered --no-cov-on-fail --cov-fail-under=98"
 
 [build-system]
 requires = ["poetry-core"]
