@@ -47,7 +47,8 @@ ingress:
   enabled: true
   host:
   className: ""
-  annotations: {}
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
 
 resources: {}
 # We usually recommend not to specify default resources and to leave this as a conscious
