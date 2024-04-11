@@ -36,7 +36,8 @@ from esg_fastapi.utils import (
     quote_str,
 )
 
-MultiValued = Annotated[list[T], BeforeValidator(ensure_list), Query()]
+Queriable = Annotated[T, "queriable"]
+MultiValued = Annotated[list[T], Queriable, BeforeValidator(ensure_list), Query()]
 Stringified = Annotated[T, AfterValidator(lambda x: str(x))]
 LowerCased = Annotated[T, AfterValidator(lambda x: x.lower())]
 # SolrFQ = Annotated[T, BeforeValidator(quote_fq_fields), BeforeValidator(one_or_list)]
@@ -51,8 +52,8 @@ class ESGSearchQuery(BaseModel):
 
     model_config = ConfigDict(validate_default=True)
 
-    id: str | None = None
-    dataset_id: str | None = None
+    id: Annotated[str | None, Queriable] = None
+    dataset_id: Annotated[str | None, Queriable] = None
 
     access: MultiValued[str] | None = None
     """Access level of the dataset."""
@@ -168,7 +169,7 @@ class ESGSearchQuery(BaseModel):
     """Processing level of the dataset."""
     product: MultiValued[str] | None = None
     """Product of the dataset."""
-    project: str | None = None
+    project: Annotated[str | None, Queriable] = None
     """Project of the dataset."""
     quality_control_flags: MultiValued[str] | None = None
     """Quality control flags of the dataset."""
@@ -249,34 +250,50 @@ class ESGSearchQuery(BaseModel):
         Query(description="the type of data returned in the response"),
     ] = "application/solr+xml"
     """The format of the response."""
-    type: Annotated[Literal["Dataset", "File", "Aggregation"], Query(description="the type of database record")] = (
-        "Dataset"
-    )
+    type: Annotated[
+        Literal["Dataset", "File", "Aggregation"], Queriable, Query(description="the type of database record")
+    ] = "Dataset"
     """The type of record to search for."""
-    bbox: Annotated[str | None, Query(description="the geospatial search box [west, south, east, north]")] = None
+    bbox: Annotated[
+        str | None, Queriable, Query(description="the geospatial search box [west, south, east, north]")
+    ] = None
     """The geospatial search box [west, south, east, north]"""
-    start: Annotated[datetime | None, Query(description="beginning of the temporal coverage in the dataset")] = None
+    start: Annotated[
+        datetime | None, Queriable, Query(description="beginning of the temporal coverage in the dataset")
+    ] = None
     """Beginning of the temporal coverage in the dataset"""
-    end: Annotated[datetime | None, Query(description="ending of the temporal coverage in the dataset")] = None
+    end: Annotated[datetime | None, Queriable, Query(description="ending of the temporal coverage in the dataset")] = (
+        None
+    )
     """Ending of the temporal coverage in the dataset"""
     _from: Annotated[
-        datetime | None, Query(alias="from", description="return records last modified after this timestamp")
+        datetime | None, Queriable, Query(alias="from", description="return records last modified after this timestamp")
     ] = None
     """Return records last modified after this timestamp"""
-    to: Annotated[datetime | None, Query(description="return records last modified before this timestamp")] = None
+    to: Annotated[
+        datetime | None, Queriable, Query(description="return records last modified before this timestamp")
+    ] = None
     """Return records last modified before this timestamp"""
     offset: Annotated[int, Query(ge=0, description="the number of records to skip")] = 0
     """The number of records to skip"""
     limit: Annotated[int, Query(ge=0, description="the number of records to return")] = 0
     """The number of records to return"""
-    replica: Annotated[bool | None, Query(description="enable to include replicas in the search results")] = None
+    replica: Annotated[
+        bool | None, Queriable, Query(description="enable to include replicas in the search results")
+    ] = None
     """Enable to include replicas in the search results"""
-    latest: Annotated[bool | None, Query(description="enable to only return the latest versions")] = None
+    latest: Annotated[bool | None, Queriable, Query(description="enable to only return the latest versions")] = None
     """Enable to only return the latest versions"""
     distrib: Annotated[bool | None, Query(description="enable to search across all federated nodes")] = None
     """Enable to search across all federated nodes"""
     facets: Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"\w+(,\w+)*?")] | None = None
     """A comma-separated list of field names to facet on."""
+
+    @computed_field
+    @property
+    def queriable_fields(self: Self) -> set[str]:
+        """All fields marked as queriable via annotation metadata."""
+        return {field for field, info in self.model_fields.items() if Queriable in info.metadata}
 
 
 def convert_and_validate_fq(input: ESGSearchQuery | T) -> str | list[str] | T:
@@ -284,8 +301,7 @@ def convert_and_validate_fq(input: ESGSearchQuery | T) -> str | list[str] | T:
     if not isinstance(input, ESGSearchQuery):
         return input
 
-    non_field_attrs = {"query", "limit", "offset", "format", "facets"}
-    fq_fields = input.model_dump(exclude_none=True, exclude=non_field_attrs)
+    fq_fields = input.model_dump(exclude_none=True, include=input.queriable_fields)
     return [format_fq_field(field) for field in fq_fields.items()]
 
 
@@ -402,27 +418,12 @@ class GlobusSearchQuery(BaseModel):
         Note:
         This method converts the `query` instance into a `GlobusSearchResult` instance by extracting the relevant fields and parameters. It does not perform any actual search operations.
         """
-        # TODO: mark these fields somehow so we don't have to hard code them. Annotated?
-        filter_fields = query.model_dump(
-            exclude_none=True,
-            exclude={
-                # These aren't treated as filters
-                "query",
-                "limit",
-                "offset",
-                "facets",
-                "advanced",
-                # We haven't decided how to handle these yet
-                "format",
-                "distrib",
-            },
-        )
         return cls(
             q=query.query,
             advanced=True,
             limit=query.limit,
             offset=query.offset,
-            filters=filter_fields,
+            filters=query.model_dump(exclude_none=True, include=query.queriable_fields),
             facets=query.facets,
         )
 
