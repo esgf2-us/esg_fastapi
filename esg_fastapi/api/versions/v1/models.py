@@ -10,9 +10,21 @@ This provides an easy way to validate and serialize the API requests and respons
 """
 
 from collections import defaultdict
+from collections.abc import Sequence
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated, Any, Literal, Self, Sequence, TypeGuard, cast
+from types import UnionType
+from typing import (
+    Annotated,
+    Any,
+    Literal,
+    Self,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    get_args,
+)
 
 from annotated_types import T
 from fastapi import Query
@@ -26,6 +38,7 @@ from pydantic import (
     StringConstraints,
     computed_field,
     field_validator,
+    validate_call,
 )
 from pydantic_core import Url
 
@@ -346,6 +359,21 @@ class GlobusFacet(BaseModel):
     """The name of the field to facet on."""
 
 
+SupportedAsFilters = dict | Sequence[GlobusFilter]
+"""Represents types convertable to a list of GlobusFilter objects."""
+
+SupportedAsFacets = str | Sequence[GlobusFacet]
+
+# Docs say isinstance arg #2 is either _ClassInfo or classinfo type, but I couldn't find an
+# importable type to use so I stole this one from https://github.com/python/typeshed/blob/6883b80f5286c7c8d540fa56b4fbf49364719e18/stdlib/builtins.pyi#L1387
+_ClassInfo: TypeAlias = type | UnionType | tuple["_ClassInfo", ...]
+C = TypeVar("C", bound=_ClassInfo)
+
+
+def is_sequence_of(value: object, value_type: C) -> TypeGuard[Sequence[C]]:
+    return isinstance(value, Sequence) and all(isinstance(i, value_type) for i in value)
+
+
 class GlobusSearchQuery(BaseModel):
     """Container model to describe the fields of a Globus Search Query Document.
 
@@ -354,15 +382,21 @@ class GlobusSearchQuery(BaseModel):
 
     @field_validator("facets", mode="before")
     @staticmethod
-    def convert_esg_seach_facets_field(value: str | list[GlobusFacet]) -> list[GlobusFacet]:
+    def convert_esg_seach_facets_field(value: SupportedAsFacets | None) -> Sequence[GlobusFacet] | None:
         """Convert a comma-and-space-separated list of Globus Facets to a list of GlobusFacet objects.
 
         Example: "activity_id, data_node, source_id, institution_id, source_type, experiment_id, sub_experiment_id, nominal_resolution, variant_label, grid_label, table_id, frequency, realm, variable_id, cf_standard_name"
         """
-        if not isinstance(value, str):
+        if value is None or is_sequence_of(value, GlobusFacet):
             return value
-
-        return [GlobusFacet(name=facet.strip(), field_name=facet.strip(), type="terms") for facet in value.split(",")]
+        elif isinstance(value, str):
+            return [
+                GlobusFacet(name=facet.strip(), field_name=facet.strip(), type="terms") for facet in value.split(",")
+            ]
+        else:
+            raise ValueError(
+                f"Expected input convertible to Sequence[GlobusFacet] one of {get_args(SupportedAsFacets)}, got {type(value)}"
+            )
 
     @field_validator("q")
     @staticmethod
@@ -380,7 +414,8 @@ class GlobusSearchQuery(BaseModel):
 
     @field_validator("filters", mode="before")
     @staticmethod
-    def convert_esg_seach_filters_field(value: dict | list[GlobusFilter]) -> list[GlobusFilter]:
+    @validate_call
+    def convert_esg_seach_filters_field(value: SupportedAsFilters) -> Sequence[GlobusFilter]:
         """Convert an ESG Search style fields dict to a list of GlobusFilter objects.
 
         Parameters:
@@ -397,10 +432,14 @@ class GlobusSearchQuery(BaseModel):
         This method is used to convert the filters field in the ESG Search Query into a list of `GlobusFilter` objects.
         It does not perform any actual search operations.
         """
-        if not isinstance(value, dict):
+        if is_sequence_of(value, GlobusFilter):
             return value
-
-        return [GlobusMatchFilter(field_name=k, values=v) for k, v in value.items()]
+        elif isinstance(value, dict):
+            return [GlobusMatchFilter(field_name=k, values=v) for k, v in value.items()]
+        else:
+            raise ValueError(
+                f"Expected input convertible to list[GlobusFilter] one of {get_args(SupportedAsFilters)}, got {type(value)}"
+            )
 
     @classmethod
     def from_esg_search_query(cls, query: ESGSearchQuery) -> Self:
@@ -437,9 +476,15 @@ class GlobusSearchQuery(BaseModel):
     """The number of results to skip."""
     result_format_version: Literal["2019-08-27", "2017-09-01"] = "2019-08-27"
     """The version of the result format."""
-    filters: list[SerializeAsAny[GlobusFilter]] | None = None
-    """A list of filters to apply to the query."""
-    facets: list[GlobusFacet] | None = None
+
+    filters: SerializeAsAny[SupportedAsFilters] | None = None
+    """A list of filters to apply to the query.
+        Note: Globus Filters is a parent model for the specific types of filters that Globus supports.
+            The `SerializeAsAny` type annotation is necessary for Pydantic to include attributes defined
+            in the child model, but not in the parent model, while still allowing any subtype to be used.
+    """
+
+    facets: SupportedAsFacets | None = None
     """A list of facets to apply to the query."""
 
     # filter_principal_sets: str | None = None
@@ -699,15 +744,6 @@ class ESGSearchHeader(BaseModel):
     """Parameters for the ESG Search Result."""
 
 
-def is_gmeta_list(value: object) -> TypeGuard[list[GlobusMetaResult]]:
-    """TypeGuard based on whether the value is a list of GlobusMetaResults.
-
-    Parameters:
-    value (T): The value to be checked.
-    """
-    return isinstance(value, list) and all(isinstance(item, GlobusMetaResult) for item in value)
-
-
 class ESGSearchResult(BaseModel):
     """Represents a search result from ESG Search."""
 
@@ -715,7 +751,7 @@ class ESGSearchResult(BaseModel):
     @staticmethod
     def docs_from_gmeta_list(value: Sequence[dict[str, Any]] | Sequence[GlobusMetaResult]) -> Sequence[dict[str, Any]]:
         """Convert a list of GlobusMetaResults to a list of Solr docs."""
-        if is_gmeta_list(value):
+        if is_sequence_of(value, GlobusMetaResult):
             # Globus Search doesn't return score, so fake it for consistency
             return [{**record.entries[0].content | {"id": record.subject, "score": 0.5}} for record in value]
         return value
@@ -749,25 +785,12 @@ class ESGFSearchFacetResult(BaseModel):
     """Facet heatmaps for the facet result."""
 
 
-def is_globus_facet_result_list(value: object) -> TypeGuard[list[GlobusFacetResult]]:
-    """TypeGuard based on whether the value is a list of GlobusFacetResults.
-
-    Parameters:
-    value (T): The value to be checked.
-    """
-    if isinstance(value, list):
-        return all(isinstance(item, GlobusFacetResult) for item in value)
-    return False
-
-
 class ESGSearchResponse(BaseModel):
     """Represents a response from ESG Search."""
 
     @field_validator("facet_counts", mode="before")
     @staticmethod
-    def convert_globus_facet_results_to_esg_search_facet_counts(
-        value: list[dict[str, Any]] | list[GlobusFacetResult] | None,
-    ) -> ESGFSearchFacetResult:
+    def convert_globus_facet_results_to_esg_search_facet_counts(value: SupportedAsFacets) -> ESGFSearchFacetResult:
         """Convert a list of GlobusFacetResults to a list of ESGSearchFacetCounts.
 
         Parameters:
@@ -783,7 +806,9 @@ class ESGSearchResponse(BaseModel):
         - If the input value is `None`, an empty ESGSearchFacetResult object is returned.
         - If the input value is a list of dictionaries, it is assumed that the list represents a list of facet results from Globus Search.
         """
-        if is_globus_facet_result_list(value):
+        if isinstance(value, ESGFSearchFacetResult):
+            return value
+        if is_sequence_of(value, GlobusFacetResult):
             facet_fields = defaultdict(list)
             for facet in value:
                 facet_fields[facet.name].extend(
@@ -794,7 +819,9 @@ class ESGSearchResponse(BaseModel):
             # Globus facet_results can be `None` if there are no facets, but ESG Search
             # returns empty dicts if there are no facets.
             return ESGFSearchFacetResult()
-        return value
+        raise ValueError(
+            f"Expected input convertible to ESGFSearchFacetResult one of {get_args(SupportedAsFacets)}, got {type(value)}"
+        )
 
     responseHeader: ESGSearchHeader
     """Represents the response header for the ESG Search Response."""
