@@ -1,8 +1,9 @@
 """Utilities that don't fit well in other modules."""
 
 import time
+from collections.abc import Sequence
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Optional, Self, Type, TypeGuard
+from typing import TYPE_CHECKING, Any, Optional, Self, Type
 
 from annotated_types import T
 
@@ -55,19 +56,7 @@ def type_of(baseclass: T) -> T:
     return object
 
 
-def is_list(value: object) -> TypeGuard[list]:
-    """TypeGuard based on whether the value is a list.
-
-    Parameters:
-    value (T): The value to be checked.
-
-    Returns:
-    TypeGuard[list]: Returns True if the value is a list, otherwise False.
-    """
-    return isinstance(value, list)
-
-
-def one_or_list(value: list[T] | T) -> T | list[T]:
+def one_or_list(value: Sequence[T] | T) -> T | Sequence[T]:
     """Unwrap length 1 lists.
 
     This function takes a value that can be either a single item or a list of items. If the passed value is a list of length 1, the function returns the single item in the list. Otherwise, it returns the original list.
@@ -88,7 +77,7 @@ def one_or_list(value: list[T] | T) -> T | list[T]:
         >>> one_or_list([1])
         1
     """
-    if is_list(value) and len(value) == 1:
+    if isinstance(value, list) and len(value) == 1:
         return value[0]
     return value
 
@@ -117,7 +106,7 @@ def ensure_list(value: T) -> T | list[T]:
         return [value]
 
 
-def quote_str(value: str) -> str:
+def quote_str(value: str | T) -> str | T:
     r"""Wrap a string in double quotes.
 
     Args:
@@ -132,13 +121,17 @@ def quote_str(value: str) -> str:
         >>> quote_str("hello'world")
         '"hello'world"'
     """
-    if not value.startswith('"') and not value.endswith('"'):
+    if isinstance(value, str) and not value.startswith('"') and not value.endswith('"'):
         return f'"{value}"'
     return value
 
 
 def format_fq_field(field: tuple[str, Any]) -> str:
-    """Conver key, value pairs to key:value str expected to be returned by Solr."""
-    quoted_fields = {"project", "dataset_id"}
+    """Convert key, value pairs to key:value str expected to be returned by Solr."""
+    # TODO: what determines if a field is non-quoted? I suspect things that are represented as
+    #       enums in the java code. If we can determine which fields are non-quoted, we should
+    #       tag them with annotations and a computed field like we do with non-queriable fields.
+    non_quoted_fields = {"type"}
     key, value = field
-    return f"{key}:{quote_str(value) if key in quoted_fields else value}"
+    value = one_or_list(value)
+    return f"{key}:{value if key in non_quoted_fields else quote_str(value)}"
