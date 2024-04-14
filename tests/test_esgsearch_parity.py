@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import TypedDict
 
+import pytest
 from fastapi.testclient import TestClient
 from pytest_bdd import given, scenarios, then, when
 from pytest_bdd.parsers import parse
@@ -44,13 +45,7 @@ def load_example(query_example: Path) -> SearchParityFixture:
 
 @when("the request is sent to ESG FastAPI", target_fixture="responses")
 def send_request(json_example: SearchParityFixture, mocker: MockerFixture) -> ComparisonFixture:
-    """Send request to ESG FastAPI and add its response to the fixture.
-
-    Notes:
-    - We use the TestClient from FastAPI to send the request to the ESG FastAPI service
-      which currently raises a Warning until the next release of FastAPI.
-      ref: https://github.com/encode/starlette/issues/2524
-    """
+    """Send request to ESG FastAPI and add its response to the fixture."""
     client = TestClient(api)
     mocker.patch(
         "esg_fastapi.api.versions.v1.routes.SearchClient.post_search",

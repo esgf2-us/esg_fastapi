@@ -13,15 +13,12 @@ from collections import defaultdict
 from collections.abc import Sequence
 from datetime import datetime
 from decimal import Decimal
-from types import UnionType
 from typing import (
     Annotated,
     Any,
     Literal,
     Self,
-    TypeAlias,
     TypeGuard,
-    TypeVar,
     cast,
     get_args,
 )
@@ -46,15 +43,12 @@ from esg_fastapi.utils import (
     ensure_list,
     format_fq_field,
     one_or_list,
-    quote_str,
 )
 
-Queriable = Annotated[T, "queriable"]
-MultiValued = Annotated[list[T], Queriable, BeforeValidator(ensure_list), Query()]
+NON_QUERIABLE_FIELDS = {"query", "format", "limit", "offset", "replica", "distrib", "facets"}
+MultiValued = Annotated[list[T], BeforeValidator(ensure_list), Query()]
 Stringified = Annotated[T, AfterValidator(lambda x: str(x))]
 LowerCased = Annotated[T, AfterValidator(lambda x: x.lower())]
-# SolrFQ = Annotated[T, BeforeValidator(quote_fq_fields), BeforeValidator(one_or_list)]
-QuotedStr = Annotated[T, AfterValidator(quote_str)]
 
 
 class ESGSearchQuery(BaseModel):
@@ -65,8 +59,8 @@ class ESGSearchQuery(BaseModel):
 
     model_config = ConfigDict(validate_default=True)
 
-    id: Annotated[str | None, Queriable] = None
-    dataset_id: Annotated[str | None, Queriable] = None
+    id: str | None = None
+    dataset_id: str | None = None
 
     access: MultiValued[str] | None = None
     """Access level of the dataset."""
@@ -182,7 +176,7 @@ class ESGSearchQuery(BaseModel):
     """Processing level of the dataset."""
     product: MultiValued[str] | None = None
     """Product of the dataset."""
-    project: Annotated[str | None, Queriable] = None
+    project: str | None = None
     """Project of the dataset."""
     quality_control_flags: MultiValued[str] | None = None
     """Quality control flags of the dataset."""
@@ -256,46 +250,36 @@ class ESGSearchQuery(BaseModel):
     """Version number of the dataset."""
     year_of_aggregation: MultiValued[str] | None = None
     """Year of aggregation of the dataset."""
-    query: Annotated[str, Query(description="a general search string")] = "*:*"
+    query: Annotated[str, Query(description="a general search string")] | None = "*:*"
     """A Solr search string."""
     format: Annotated[
         Literal["application/solr+xml", "application/solr+json"],
         Query(description="the type of data returned in the response"),
     ] = "application/solr+xml"
     """The format of the response."""
-    type: Annotated[
-        Literal["Dataset", "File", "Aggregation"], Queriable, Query(description="the type of database record")
-    ] = "Dataset"
-    """The type of record to search for."""
-    bbox: Annotated[
-        str | None, Queriable, Query(description="the geospatial search box [west, south, east, north]")
-    ] = None
-    """The geospatial search box [west, south, east, north]"""
-    start: Annotated[
-        datetime | None, Queriable, Query(description="beginning of the temporal coverage in the dataset")
-    ] = None
-    """Beginning of the temporal coverage in the dataset"""
-    end: Annotated[datetime | None, Queriable, Query(description="ending of the temporal coverage in the dataset")] = (
-        None
+    type: Annotated[Literal["Dataset", "File", "Aggregation"], Query(description="the type of database record")] = (
+        "Dataset"
     )
+    """The type of record to search for."""
+    bbox: Annotated[str | None, Query(description="the geospatial search box [west, south, east, north]")] = None
+    """The geospatial search box [west, south, east, north]"""
+    start: Annotated[datetime | None, Query(description="beginning of the temporal coverage in the dataset")] = None
+    """Beginning of the temporal coverage in the dataset"""
+    end: Annotated[datetime | None, Query(description="ending of the temporal coverage in the dataset")] = None
     """Ending of the temporal coverage in the dataset"""
     _from: Annotated[
-        datetime | None, Queriable, Query(alias="from", description="return records last modified after this timestamp")
+        datetime | None, Query(alias="from", description="return records last modified after this timestamp")
     ] = None
     """Return records last modified after this timestamp"""
-    to: Annotated[
-        datetime | None, Queriable, Query(description="return records last modified before this timestamp")
-    ] = None
+    to: Annotated[datetime | None, Query(description="return records last modified before this timestamp")] = None
     """Return records last modified before this timestamp"""
     offset: Annotated[int, Query(ge=0, description="the number of records to skip")] = 0
     """The number of records to skip"""
     limit: Annotated[int, Query(ge=0, description="the number of records to return")] = 0
     """The number of records to return"""
-    replica: Annotated[
-        bool | None, Queriable, Query(description="enable to include replicas in the search results")
-    ] = None
+    replica: Annotated[bool | None, Query(description="enable to include replicas in the search results")] = None
     """Enable to include replicas in the search results"""
-    latest: Annotated[bool | None, Queriable, Query(description="enable to only return the latest versions")] = None
+    latest: Annotated[bool | None, Query(description="enable to only return the latest versions")] = None
     """Enable to only return the latest versions"""
     distrib: Annotated[bool | None, Query(description="enable to search across all federated nodes")] = None
     """Enable to search across all federated nodes"""
@@ -305,20 +289,8 @@ class ESGSearchQuery(BaseModel):
     @computed_field
     @property
     def queriable_fields(self: Self) -> set[str]:
-        """All fields marked as queriable via annotation metadata."""
-        return {field for field, info in self.model_fields.items() if Queriable in info.metadata}
-
-
-def convert_and_validate_fq(input: ESGSearchQuery | T) -> str | list[str] | T:
-    """Convert an ESGSearchQuery to a Solr FQ."""
-    if not isinstance(input, ESGSearchQuery):
-        return input
-
-    fq_fields = input.model_dump(exclude_none=True, include=input.queriable_fields)
-    return [format_fq_field(field) for field in fq_fields.items()]
-
-
-SolrFQ = Annotated[T, BeforeValidator(convert_and_validate_fq), AfterValidator(one_or_list)]
+        """All fields that are queriable in Solr."""
+        return {field for field in self.model_fields if field not in NON_QUERIABLE_FIELDS}
 
 
 class GlobusFilter(BaseModel):
@@ -364,13 +336,31 @@ SupportedAsFilters = dict | Sequence[GlobusFilter]
 
 SupportedAsFacets = str | Sequence[GlobusFacet]
 
-# Docs say isinstance arg #2 is either _ClassInfo or classinfo type, but I couldn't find an
-# importable type to use so I stole this one from https://github.com/python/typeshed/blob/6883b80f5286c7c8d540fa56b4fbf49364719e18/stdlib/builtins.pyi#L1387
-_ClassInfo: TypeAlias = type | UnionType | tuple["_ClassInfo", ...]
-C = TypeVar("C", bound=_ClassInfo)
 
+def is_sequence_of(value: object, value_type: type[T]) -> TypeGuard[Sequence[T]]:
+    """Check if a given value is a sequence of a specific type.
 
-def is_sequence_of(value: object, value_type: C) -> TypeGuard[Sequence[C]]:
+    Parameters:
+    value (object): The value to be checked.
+    value_type (type[T]): The type of the elements in the sequence.
+
+    Returns:
+    TypeGuard[Sequence[T]]: A type guard that returns `True` if the given value is a sequence of the specified type, and `False` otherwise.
+
+    Raises:
+    TypeError: If the `value_type` parameter is not a type.
+
+    Example:
+    ```python
+    from typing import List, Dict
+
+    # Check if a list is a sequence of integers
+    is_sequence_of([1, 2, 3], int)  # Returns True
+
+    # Check if a dictionary is a sequence of integers
+    is_sequence_of({1: 'one', 2: 'two'}, int)  # Returns False
+    ```
+    """
     return isinstance(value, Sequence) and all(isinstance(i, value_type) for i in value)
 
 
@@ -619,6 +609,10 @@ class GlobusSearchResult(BaseModel):
     """
 
 
+SolrFQ = str | Sequence[str]
+SupportedAsFQ = ESGSearchQuery | SolrFQ
+
+
 class ESGSearchResultParams(BaseModel):
     """Parameters for the ESG Search Result.
 
@@ -645,6 +639,37 @@ class ESGSearchResultParams(BaseModel):
     """
 
     model_config = ConfigDict(validate_default=True)
+
+    @field_validator("fq", mode="before")
+    @staticmethod
+    def convert_and_validate_fq(input: SupportedAsFQ) -> SolrFQ:
+        """Convert and validate the input for the `fq` field.
+
+        Parameters:
+        input (SupportedAsFQ): The input value to be converted and validated.
+
+        Returns:
+        SolrFQ: A SolrFQ object representing the list of Solr Facet Queries.
+
+        Raises:
+        ValueError: If the input value is not a list of Solr Facet Queries, or if it is not convertible to a SolrFQ object.
+
+        Note:
+        - If the input value is a string, it is split into a list of strings and then validated.
+        - If the input value is a list of strings, it is validated as a SolrFQ object.
+        - If the input value is an instance of `ESGSearchQuery`, it is converted to a SolrFQ object by first converting the queryable fields of the query into a list of strings, and then validating the resulting list.
+        """
+        if isinstance(input, str):
+            input = [atom.strip() for atom in input.split(",")]
+        if is_sequence_of(input, str):
+            return one_or_list(input)
+        elif isinstance(input, ESGSearchQuery):
+            fq_fields = input.model_dump(exclude_none=True, include=input.queriable_fields)
+            return one_or_list([format_fq_field(field) for field in fq_fields.items()])
+        else:
+            raise ValueError(
+                f"Expected input convertible to SolrFQ one of {get_args(SupportedAsFQ)}, got {type(input)}"
+            )
 
     facet_field: None | list[str] = Field(alias="facet.field", default=None, exclude=True)
     """
@@ -744,23 +769,33 @@ class ESGSearchHeader(BaseModel):
     """Parameters for the ESG Search Result."""
 
 
+# TODO: we should be able to better specify the typing of docs
+SolrDoc = dict[str, Any]
+SupportedAsSolrDocs = SolrDoc | Sequence[GlobusMetaResult]
+
+
 class ESGSearchResult(BaseModel):
     """Represents a search result from ESG Search."""
 
     @field_validator("docs", mode="before")
     @staticmethod
-    def docs_from_gmeta_list(value: Sequence[dict[str, Any]] | Sequence[GlobusMetaResult]) -> Sequence[dict[str, Any]]:
+    def convert_to_docs(value: SupportedAsSolrDocs) -> Sequence[SolrDoc]:
         """Convert a list of GlobusMetaResults to a list of Solr docs."""
-        if is_sequence_of(value, GlobusMetaResult):
+        if is_sequence_of(value, dict):
+            return value
+        elif is_sequence_of(value, GlobusMetaResult):
             # Globus Search doesn't return score, so fake it for consistency
             return [{**record.entries[0].content | {"id": record.subject, "score": 0.5}} for record in value]
-        return value
+        else:
+            raise ValueError(
+                f"Expected input convertible to SolrDoc one of {get_args(SupportedAsSolrDocs)}, got {type(value)}"
+            )
 
     numFound: int
     """Number of documents found."""
     start: int
     """Starting index for the search results."""
-    docs: list[dict[str, Any]]
+    docs: list[SolrDoc]
     """List of documents found."""
 
     @computed_field
@@ -790,7 +825,7 @@ class ESGSearchResponse(BaseModel):
 
     @field_validator("facet_counts", mode="before")
     @staticmethod
-    def convert_globus_facet_results_to_esg_search_facet_counts(value: SupportedAsFacets) -> ESGFSearchFacetResult:
+    def convert_to_esg_search_facet_counts(value: SupportedAsFacets) -> ESGFSearchFacetResult:
         """Convert a list of GlobusFacetResults to a list of ESGSearchFacetCounts.
 
         Parameters:
@@ -806,6 +841,8 @@ class ESGSearchResponse(BaseModel):
         - If the input value is `None`, an empty ESGSearchFacetResult object is returned.
         - If the input value is a list of dictionaries, it is assumed that the list represents a list of facet results from Globus Search.
         """
+        if isinstance(value, dict):
+            return ESGFSearchFacetResult.model_validate(value)
         if isinstance(value, ESGFSearchFacetResult):
             return value
         if is_sequence_of(value, GlobusFacetResult):
