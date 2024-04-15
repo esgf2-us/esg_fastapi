@@ -52,7 +52,9 @@ def type_of(baseclass: T) -> T:
       in its use of `__slots__`
     """
     if TYPE_CHECKING:
-        return baseclass
+        return (
+            baseclass  # pragma: no cover TODO: coverage doesn't report this line as covered even though the tests pass.
+        )
     return object
 
 

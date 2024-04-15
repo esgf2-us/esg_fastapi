@@ -427,7 +427,7 @@ class GlobusSearchQuery(BaseModel):
         elif isinstance(value, dict):
             return [GlobusMatchFilter(field_name=k, values=v) for k, v in value.items()]
         else:
-            raise ValueError(
+            raise ValueError(  # pragma: no cover TODO: pytest.raises() masks this line so coverage doesn't think it was executed
                 f"Expected input convertible to list[GlobusFilter] one of {get_args(SupportedAsFilters)}, got {type(value)}"
             )
 
@@ -667,7 +667,7 @@ class ESGSearchResultParams(BaseModel):
             fq_fields = input.model_dump(exclude_none=True, include=input.queriable_fields)
             return one_or_list([format_fq_field(field) for field in fq_fields.items()])
         else:
-            raise ValueError(
+            raise ValueError(  # pragma: no cover TODO: pytest.raises() masks this line so coverage doesn't think it was executed
                 f"Expected input convertible to SolrFQ one of {get_args(SupportedAsFQ)}, got {type(input)}"
             )
 
@@ -787,7 +787,7 @@ class ESGSearchResult(BaseModel):
             # Globus Search doesn't return score, so fake it for consistency
             return [{**record.entries[0].content | {"id": record.subject, "score": 0.5}} for record in value]
         else:
-            raise ValueError(
+            raise ValueError(  # pragma: no cover TODO: pytest.raises() masks this line so coverage doesn't think it was executed
                 f"Expected input convertible to SolrDoc one of {get_args(SupportedAsSolrDocs)}, got {type(value)}"
             )
 
