@@ -9,10 +9,9 @@ This module contains various utility functions that do not fit well in other mod
 """
 
 from types import ModuleType
-from typing import Generic, assert_type
+from typing import assert_type
 
 import pytest
-from annotated_types import T
 from pytest_mock import MockerFixture
 
 from esg_fastapi.utils import ensure_list, one_or_list, type_of
