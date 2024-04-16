@@ -39,7 +39,7 @@ class Timer:
         self.time = int((self.end_time - self.start_time) // 1e9)
 
 
-def type_of(baseclass: T) -> T:
+def Cast(baseclass: T) -> T:
     """Inherit from `baseclass` only for type checking purposes.
 
     This allows informing type checkers that the inheriting class ducktypes

@@ -14,25 +14,26 @@ from typing import assert_type
 import pytest
 from pytest_mock import MockerFixture
 
-from esg_fastapi.utils import ensure_list, one_or_list, type_of
+from esg_fastapi.utils import Cast, ensure_list, one_or_list
 
 
 @pytest.mark.parametrize("enabled", [True, False])
-def test_type_of_returns_correct_type(enabled: bool) -> None:
+def test_Cast_returns_correct_type(mocker: MockerFixture, enabled: bool) -> None:
     """During type checking, return the passed type. Otherwise, return object."""
-    returned_type = type_of(ModuleType)
+    mocker.patch("typing.TYPE_CHECKING", enabled)
+    returned_type = Cast(ModuleType)
     if enabled:
-        assert_type(returned_type, ModuleType)
+        assert_type(returned_type, type[ModuleType])
     else:
-        assert_type(returned_type, object)
+        assert_type(returned_type, type[object])
 
 
 @pytest.mark.parametrize("enabled", [True, False])
-def test_type_of_indicates_correctly(mocker: MockerFixture, enabled: bool) -> None:
+def test_Cast_indicates_correctly(mocker: MockerFixture, enabled: bool) -> None:
     """Ensure that a class inheriting from type_of(T) type checks as a T but otherwise doesn't change its inheritance."""
     mocker.patch("typing.TYPE_CHECKING", enabled)
 
-    class TestObj(type_of(ModuleType)): ...
+    class TestObj(Cast(ModuleType)): ...
 
     if enabled:
         assert_type(TestObj, ModuleType)

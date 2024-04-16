@@ -31,6 +31,7 @@ from pydantic import (
     BeforeValidator,
     ConfigDict,
     Field,
+    PlainSerializer,
     SerializeAsAny,
     StringConstraints,
     computed_field,
@@ -48,7 +49,7 @@ from esg_fastapi.utils import (
 NON_QUERIABLE_FIELDS = {"query", "format", "limit", "offset", "replica", "distrib", "facets"}
 MultiValued = Annotated[list[T], BeforeValidator(ensure_list), Query()]
 Stringified = Annotated[T, AfterValidator(lambda x: str(x))]
-LowerCased = Annotated[T, AfterValidator(lambda x: x.lower())]
+LowerCased = Annotated[T, PlainSerializer(lambda x: x.lower())]
 
 
 class ESGSearchQuery(BaseModel):
@@ -681,7 +682,7 @@ class ESGSearchResultParams(BaseModel):
     """
     q_alt: str = Field(alias="q.alt", default="*:*")
     """The `q_alt` attribute is an optional string parameter that represents a Solr "alternative query" string. This attribute is used to provide an additional query string for the search operation. If not provided, the default value is "*:*", which means that all documents will be returned."""
-    indent: str = "true"
+    indent: LowerCased[Stringified[bool]] = True
     """
     The `indent` attribute is a boolean flag indicating whether to indent the JSON response. Its default value is `"true"`.
     """
@@ -740,7 +741,7 @@ class ESGSearchResultParams(BaseModel):
     """
     The `facet_method` attribute is a string representing the method to use for faceting. Its default value is `"enum"`.
     """
-    facet_mincount: Stringified[int] = Field(alias="facet.mincount", default=1)
+    facet_mincount: Decimal = Field(alias="facet.mincount", default=1)
     """
     The `facet_mincount` attribute is an integer representing the minimum count required for a facet value to be included in the response. Its default value is `1`.
     """
@@ -800,7 +801,7 @@ class ESGSearchResult(BaseModel):
 
     @computed_field
     @property
-    def maxScore(self: Self) -> int | None:
+    def maxScore(self: Self) -> float | None:
         """Maximum score for the search results."""
         return max((record.get("score", 0) for record in self.docs), default=None)
 
