@@ -1,26 +1,29 @@
 """Create a Pydantic settings object that can be imported."""
 
 import sys
+from importlib.machinery import ModuleSpec
 from types import ModuleType
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from pydantic import UUID4, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from esg_fastapi.utils import type_of
+from esg_fastapi.utils import Cast
 
 
-class ClassModule(type_of(ModuleType)):
+class ClassModule(Cast(ModuleType)):
     """Mixin class that allows a subclass to pretend to be a Module.
 
     This isn't required for the class to be used as intended, but these
     attributes make the class instance adhere to the PEP module interface.
     """
 
-    __path__ = []
-    __file__ = __file__
-    __cached__ = __cached__
-    __spec__ = __spec__
+    __path__: list[str] = []
+    __name__: str = __name__
+    __file__: str = __file__
+    __cached__: str = __cached__
+    __spec__: ModuleSpec = __spec__
 
 
 class Settings(BaseSettings, ClassModule):
@@ -38,3 +41,7 @@ class Settings(BaseSettings, ClassModule):
 
 
 sys.modules[__name__] = Settings()
+# Static checkers don't see the __getattr__ method on the instance, so we have to explicitly expose
+# properties at the module level.
+if TYPE_CHECKING:  # pragma: no cover
+    globus_search_index = Settings.globus_search_index

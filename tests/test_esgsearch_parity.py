@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 from typing import TypedDict
 
-import pytest
 from fastapi.testclient import TestClient
 from pytest_bdd import given, scenarios, then, when
 from pytest_bdd.parsers import parse
