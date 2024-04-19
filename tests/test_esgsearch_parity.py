@@ -45,7 +45,7 @@ def load_example(query_example: Path) -> SearchParityFixture:
 @when("the request is sent to ESG FastAPI", target_fixture="responses")
 def send_request(json_example: SearchParityFixture, mocker: MockerFixture) -> ComparisonFixture:
     """Send request to ESG FastAPI and add its response to the fixture."""
-    client = TestClient(api)
+    client = TestClient(api.wsgi_factory())
     mocker.patch(
         "esg_fastapi.api.versions.v1.routes.SearchClient.post_search",
         return_value=mocker.Mock(data=json_example["globus_response"]),

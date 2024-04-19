@@ -1,13 +1,10 @@
 """Step definitions for Behave/Cucumber style tests."""
 
-import json
-from pathlib import Path
-from typing import Literal, Type, TypedDict
+from typing import Literal, TypedDict
 
 from fastapi.testclient import TestClient
 from pytest_bdd import given, scenarios, then, when
 from pytest_bdd.parsers import parse
-from pytest_mock import MockerFixture
 
 from esg_fastapi import api
 from esg_fastapi.observability.models import ProbeResponse
@@ -43,14 +40,12 @@ def send_request(endpoint: str) -> ProbeResponse:
       which currently raises a Warning until the next release of FastAPI.
       ref: https://github.com/encode/starlette/issues/2524
     """
-    client = TestClient(api)
+    client = TestClient(api.wsgi_factory())
 
     return ProbeResponse.model_validate(client.get(endpoint).json())
 
 
 @then(parse("it should return a positive {status}"))
-def compare_responses(
-    status: Literal["ready", "live"], probe_response: ProbeResponse
-) -> None:
+def compare_responses(status: Literal["ready", "live"], probe_response: ProbeResponse) -> None:
     """Ensure the expected response is returned for the probe."""
     assert status == probe_response.status

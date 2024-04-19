@@ -1,11 +1,17 @@
 """Utilities that don't fit well in other modules."""
 
+import logging
 import time
 from collections.abc import Sequence
-from types import TracebackType
-from typing import TYPE_CHECKING, Any, Optional, Self, Type
+from enum import Enum
+from importlib.machinery import ModuleSpec
+from types import ModuleType, TracebackType
+from typing import TYPE_CHECKING, Any, MutableSequence, Optional, Self, Type
 
 from annotated_types import T
+from gunicorn.arbiter import Arbiter
+from gunicorn.workers.base import Worker
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 
 class Timer:
@@ -56,6 +62,20 @@ def Cast(baseclass: T) -> T:
             baseclass  # pragma: no cover TODO: coverage doesn't report this line as covered even though the tests pass.
         )
     return object
+
+
+class ClassModule(Cast(ModuleType)):
+    """Mixin class that allows a subclass to pretend to be a Module.
+
+    This isn't required for the class to be used as intended, but these
+    attributes make the class instance adhere to the PEP module interface.
+    """
+
+    __path__: MutableSequence[str] = []
+    __name__: str = __name__
+    __file__: str | None = __file__
+    __cached__: str = __cached__
+    __spec__: ModuleSpec | None = __spec__
 
 
 def one_or_list(value: Sequence[T] | T) -> T | Sequence[T]:
@@ -137,3 +157,16 @@ def format_fq_field(field: tuple[str, Any]) -> str:
     key, value = field
     value = one_or_list(value)
     return f"{key}:{value if key in non_quoted_fields else quote_str(value)}"
+
+
+LogLevels = Enum("LogLevels", logging.getLevelNamesMapping())
+
+
+def opentelemetry_init(arbiter: Arbiter, worker: Worker) -> None:
+    """Intended as a `post_fork` hook so that Gunicorn workers are instrumented _after_ forking to prevent locking issues.
+
+    Args:
+        arbiter (Arbiter): The Gunicorn arbiter.
+        worker (Worker): The Gunicorn worker.
+    """
+    FastAPIInstrumentor().instrument_app(worker.app)

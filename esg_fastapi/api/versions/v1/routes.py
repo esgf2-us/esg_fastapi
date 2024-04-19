@@ -1,5 +1,7 @@
 """Starting point/base for the ESG FastAPI service and it's versions and components."""
 
+import logging
+
 import requests
 from fastapi import Depends, FastAPI, Request
 from globus_sdk import SearchClient
@@ -14,6 +16,8 @@ from .models import (
     GlobusSearchQuery,
     GlobusSearchResult,
 )
+
+logger = logging.getLogger()
 
 app = FastAPI(
     version="v1",
@@ -51,6 +55,7 @@ async def search_globus(q: ESGSearchQuery = dependency_injector) -> ESGSearchRes
     - response: Contains the actual search results, including the total number of results, the starting offset, and the actual search results.
     - facet_counts: Contains the counts of distinct values for each facet in the search results.
     """
+    logger.info("Starting query")
     globus_query = GlobusSearchQuery.from_esg_search_query(q)
     with Timer() as t:
         globus_response = GlobusSearchResult.model_validate(

@@ -23,7 +23,7 @@ def json_example() -> SearchParityFixture:
 
 def test_fixture_generation(json_example: SearchParityFixture, mocker: MockerFixture) -> None:
     """Ensure that generated fixture format is the same given the same query responses."""
-    client = TestClient(api)
+    client = TestClient(api.wsgi_factory())
     mocker.patch(
         "esg_fastapi.api.versions.v1.routes.SearchClient.post_search",
         return_value=mocker.Mock(data=json_example["globus_response"]),

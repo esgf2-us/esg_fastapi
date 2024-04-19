@@ -12,6 +12,6 @@ RUN export PIP_EXTRA_INDEX_URL="$PIP_EXTRA_INDEX_URL" && \
     --no-cache-dir \
     --report -
 
-ENV UVICORN_HOST=0.0.0.0
-ENV UVICORN_PORT=8080
-CMD ["uvicorn", "esg_fastapi:api"]
+ENV PROMETHEUS_MULTIPROC_DIR /dev/shm
+
+CMD ["python", "-m", "esg_fastapi"]
