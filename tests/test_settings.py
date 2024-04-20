@@ -1,10 +1,14 @@
 """Ensure that the settings module works as intended."""
 
 import logging
+import os
+from typing import Self
 
 import pytest
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
 from pytest_mock import MockFixture
+
+from esg_fastapi.utils import GeneratedOTELBase
 
 
 def test_settings_is_usable() -> None:
@@ -81,3 +85,32 @@ def test_root_logger_has_OTEL_span_id_and_trace_id(caplog: pytest.LogCaptureFixt
         for record in caplog.records:
             assert "span_id" in root_formatter.format(record)
             assert "trace_id" in root_formatter.format(record)
+
+
+def test_OTEL_env_vars_on_generated_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeEntrypoint:
+        def load(self: Self) -> type:
+            return type("FakeModule", tuple(), {"OTEL_TEST_VAR": "preset"})
+
+    def mock_entry_points(group: str = "ignored") -> list[FakeEntrypoint]:
+        return [FakeEntrypoint()]
+
+    monkeypatch.setattr("esg_fastapi.utils.entry_points", mock_entry_points)
+    ModelClass = GeneratedOTELBase()
+    assert hasattr(ModelClass(), "otel_test_var")
+
+
+def test_OTELSettings_exports_set_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeEntrypoint:
+        def load(self: Self) -> type:
+            return type("FakeModule", tuple(), {"OTEL_TEST_VAR": "preset"})
+
+    def mock_entry_points(group: str = "ignored") -> list[FakeEntrypoint]:
+        return [FakeEntrypoint()]
+
+    monkeypatch.setattr("esg_fastapi.utils.entry_points", mock_entry_points)
+
+    class TestClass(GeneratedOTELBase()): ...
+
+    TestClass.model_validate({"otel_test_var": "fizzbang"})
+    assert os.environ["OTEL_TEST_VAR"] == "fizzbang"
