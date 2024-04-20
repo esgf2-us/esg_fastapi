@@ -19,7 +19,6 @@ from pydantic import (
     IPvAnyAddress,
     ValidationInfo,
     field_validator,
-    model_validator,
 )
 from pydantic_loggings.base import Formatter, Handler
 from pydantic_loggings.base import Logger as LoggerModel
@@ -28,7 +27,7 @@ from pydantic_loggings.types_ import OptionalModel, OptionalModelDict
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from esg_fastapi.api.versions.v1.models import Stringified
-from esg_fastapi.utils import ClassModule, LogLevels, opentelemetry_init
+from esg_fastapi.utils import ClassModule, Exportable, GeneratedOTELBase, LogLevels, opentelemetry_init
 
 # TODO: we should be able to build this dynamically, but I gave up on figuring out the typing
 # def map_annotation(setting: Setting) -> type:
@@ -166,11 +165,24 @@ class ESGFLogging(LoggingConfig):
         {"handlers": ["stdout"], "level": "INFO", "propagate": True}
     )
 
-    @model_validator(mode="after")
-    def configure_logger(self: Self) -> Self:
-        """Abuse the model validation system to ensure the logger is configured as soon as the model is validated."""
+    def model_post_init(self: Self, __context) -> None:
+        """Ensure the logger is configured as soon as the model is validated."""
         self.configure()
-        return self
+
+
+class OTELSettings(GeneratedOTELBase()):
+    """Settings class that exports all OpenTelemetry settings as environment variables.
+
+    We inherit from the model produced by the GeneratedOTELBase class factory to keep that logic separate.
+    The fields generated on that model all have a default value of `None` and the `model_post_init` hook
+    will only export fields that have a value set, that way we don't need to know what all the OpenTelemetry
+    settings env vars default to (it doesn't seem to be exposed anywhere).
+    """
+
+    otel_service_name: Exportable[str] = "ESG FastAPI"
+    otel_python_log_level: Exportable[str] = "info"
+    otel_python_logging_auto_instrumentation_enabled: Exportable[str] = "true"
+    otel_python_log_correlation: Exportable[str] = "true"
 
 
 class Settings(BaseSettings, ClassModule):
@@ -180,6 +192,7 @@ class Settings(BaseSettings, ClassModule):
 
     gunicorn: GunicornSettings = Field(default_factory=GunicornSettings)
     logging: LoggingConfig = Field(default_factory=ESGFLogging)
+    otel_settings: OTELSettings = Field(default_factory=OTELSettings)
 
     # Globus functions are typed to accept UUIDs so use the coercion for validation
     # ref: https://github.com/globus/globus-sdk-python/blob/b6fa2edc7e81201494d150585078a99d3926dfc7/src/globus_sdk/_types.py#L18
@@ -191,9 +204,11 @@ class Settings(BaseSettings, ClassModule):
 
 
 sys.modules[__name__] = Settings()
+
 # Static checkers don't see the __getattr__ method on the instance, so we have to explicitly expose
 # properties at the module level.
 if TYPE_CHECKING:  # pragma: no cover
     globus_search_index = Settings.globus_search_index
     gunicorn: GunicornSettings = Settings.gunicorn
     logging: LoggingConfig = Settings.logging
+    otel_settings: OTELSettings = Settings.otel_settings
