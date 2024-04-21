@@ -3,8 +3,9 @@
 import logging
 
 import requests
-from fastapi import Depends, FastAPI, Request
+from fastapi import APIRouter, Depends, FastAPI, Request
 from globus_sdk import SearchClient
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from typing_extensions import TypedDict
 
 from esg_fastapi import settings
@@ -19,24 +20,32 @@ from .models import (
 
 logger = logging.getLogger()
 
-app = FastAPI(
-    version="v1",
-    title="title",
-    summary="summary",
-    description="description",
-    openapi_tags=[
-        {
-            "name": "v1",
-            "description": "description",
-        },
-    ],
-)
-app.router.tags = ["v1"]
+router = APIRouter()
+
+
+def app_factory() -> FastAPI:
+    app = FastAPI(
+        version="v1",
+        title="title",
+        summary="summary",
+        description="description",
+        openapi_tags=[
+            {
+                "name": "v1",
+                "description": "description",
+            },
+        ],
+    )
+    app.include_router(router)
+    app.router.tags = ["v1"]
+    FastAPIInstrumentor().instrument_app(app)
+    return app
+
 
 dependency_injector = Depends()
 
 
-@app.get("/")
+@router.get("/")
 async def search_globus(q: ESGSearchQuery = dependency_injector) -> ESGSearchResponse:
     """This function performs a search using the Globus API based on the provided ESG search query.
 
@@ -58,6 +67,7 @@ async def search_globus(q: ESGSearchQuery = dependency_injector) -> ESGSearchRes
     logger.info("Starting query")
     globus_query = GlobusSearchQuery.from_esg_search_query(q)
     with Timer() as t:
+        # TODO: OTEL will time this anyway -- can we get the time from it?
         globus_response = GlobusSearchResult.model_validate(
             SearchClient().post_search(settings.globus_search_index, globus_query.model_dump(exclude_none=True)).data
         )
@@ -103,7 +113,7 @@ class SearchParityFixture(TypedDict):
     esg_search_response: ESGSearchResponse
 
 
-@app.get("/make_fixture")
+@router.get("/make_fixture")
 def make_fixture(raw_request: Request, q: ESGSearchQuery = dependency_injector) -> SearchParityFixture:
     """This function makes a fixture for comparing ESG and Globus search results.
 

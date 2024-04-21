@@ -5,7 +5,6 @@ import pytest
 from fastapi.testclient import TestClient
 from pytest_mock import MockerFixture
 
-from esg_fastapi import api
 from esg_fastapi.api.versions.v1.routes import SearchParityFixture
 
 
@@ -23,7 +22,9 @@ def json_example() -> SearchParityFixture:
 
 def test_fixture_generation(json_example: SearchParityFixture, mocker: MockerFixture) -> None:
     """Ensure that generated fixture format is the same given the same query responses."""
-    client = TestClient(api.wsgi_factory())
+    from esg_fastapi.api.main import app_factory
+
+    client = TestClient(app_factory())
     mocker.patch(
         "esg_fastapi.api.versions.v1.routes.SearchClient.post_search",
         return_value=mocker.Mock(data=json_example["globus_response"]),

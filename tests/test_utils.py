@@ -8,51 +8,25 @@ This module contains various utility functions that do not fit well in other mod
 - `ensure_list(value: T) -> T | list[T]`: If value is a list, return as is. Otherwise, wrap it in a list.
 """
 
-from types import ModuleType
-from typing import assert_type
-
-import pytest
-from pytest_mock import MockerFixture
-
-from esg_fastapi.utils import Cast, ensure_list, one_or_list
-
-
-@pytest.mark.parametrize("enabled", [True, False])
-def test_Cast_returns_correct_type(mocker: MockerFixture, enabled: bool) -> None:
-    """During type checking, return the passed type. Otherwise, return object."""
-    mocker.patch("typing.TYPE_CHECKING", enabled)
-    returned_type = Cast(ModuleType)
-    if enabled:
-        assert_type(returned_type, type[ModuleType])
-    else:
-        assert_type(returned_type, type[object])
-
-
-@pytest.mark.parametrize("enabled", [True, False])
-def test_Cast_indicates_correctly(mocker: MockerFixture, enabled: bool) -> None:
-    """Ensure that a class inheriting from type_of(T) type checks as a T but otherwise doesn't change its inheritance."""
-    mocker.patch("typing.TYPE_CHECKING", enabled)
-
-    class TestObj(Cast(ModuleType)): ...
-
-    if enabled:
-        assert_type(TestObj, ModuleType)
-    else:
-        assert_type(TestObj, object)
-
 
 def test_one_or_list_single_item() -> None:
     """Given a list of len() > 1, return the list unchanged."""
+    from esg_fastapi.utils import one_or_list
+
     assert one_or_list([1, 2, 3]) == [1, 2, 3]
 
 
 def test_one_or_list_single_item_in_list() -> None:
     """Unwrap a length 1 list[int]."""
+    from esg_fastapi.utils import one_or_list
+
     assert one_or_list([1]) == 1
 
 
 def test_one_or_list_string() -> None:
     """Unwrap a length 1 list[int]."""
+    from esg_fastapi.utils import one_or_list
+
     assert one_or_list("hello") == "hello"
 
 
@@ -61,19 +35,27 @@ def test_one_or_list_empty_list() -> None:
 
     TODO: is this the correct behavior?
     """
+    from esg_fastapi.utils import one_or_list
+
     assert one_or_list([]) == []
 
 
 def test_ensure_list_empty_list() -> None:
     """Empty list is unchanged."""
+    from esg_fastapi.utils import ensure_list
+
     assert ensure_list([]) == []
 
 
 def test_ensure_list_empty_str() -> None:
     """Empty string is wrapped in a list."""
+    from esg_fastapi.utils import ensure_list
+
     assert ensure_list("") == [""]
 
 
 def test_ensure_list_populated_list() -> None:
     """Populated list is unchanged."""
+    from esg_fastapi.utils import ensure_list
+
     assert ensure_list([1, 2, 3, 4]) == [1, 2, 3, 4]

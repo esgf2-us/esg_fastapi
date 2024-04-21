@@ -1,33 +1,20 @@
-"""Create a Pydantic settings object that can be imported."""
-
-import sys
 from functools import partial
 from multiprocessing import cpu_count
 from pathlib import Path
 from tempfile import mkdtemp
-from typing import TYPE_CHECKING, Annotated, Callable, Self
-from uuid import UUID
+from typing import Annotated, Callable, Optional
 
 from annotated_types import T
 from gunicorn.arbiter import Arbiter
 from gunicorn.workers.base import Worker
-from opentelemetry.instrumentation.logging import DEFAULT_LOGGING_FORMAT as OTEL_DEFAULT_LOGGING_FORMAT
-from pydantic import (
-    UUID4,
-    BaseModel,
-    Field,
-    IPvAnyAddress,
-    ValidationInfo,
-    field_validator,
-)
-from pydantic_loggings.base import Formatter, Handler
-from pydantic_loggings.base import Logger as LoggerModel
-from pydantic_loggings.base import Logging as LoggingConfig
-from pydantic_loggings.types_ import OptionalModel, OptionalModelDict
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import BaseModel, Field, IPvAnyAddress, ValidationInfo, field_validator
 
 from esg_fastapi.api.versions.v1.models import Stringified
-from esg_fastapi.utils import ClassModule, Exportable, GeneratedOTELBase, LogLevels, opentelemetry_init
+from esg_fastapi.configuration.opentelemetry import opentelemetry_init
+
+from .logging import LogLevels
+
+ValidatedDefault = Annotated[T, Field(validate_default=True)]
 
 # TODO: we should be able to build this dynamically, but I gave up on figuring out the typing
 # def map_annotation(setting: Setting) -> type:
@@ -62,8 +49,6 @@ from esg_fastapi.utils import ClassModule, Exportable, GeneratedOTELBase, LogLev
 #     },
 # )
 
-ValidatedDefault = Annotated[T, Field(validate_default=True)]
-
 
 class GunicornSettings(BaseModel):
     """Settings for the Gunicorn web server."""
@@ -72,9 +57,9 @@ class GunicornSettings(BaseModel):
     # but not actually passed directly to Gunicorn
     workers_per_core: int = 1
     web_concurrency: int = 0
-    max_workers: int = 0
-    host: IPvAnyAddress = Field(default="0.0.0.0")  # noqa: S104 -- primarily used for k8s so default to making that easier
-    port: int = 8080
+    max_workers: int = 1
+    host: Optional[IPvAnyAddress] = Field(default="0.0.0.0")  # noqa: S104 -- primarily used for k8s so default to making that easier
+    port: Optional[int] = 8080
 
     # Actual Gunicorn config variables
     workers: ValidatedDefault[int] = 0
@@ -90,6 +75,7 @@ class GunicornSettings(BaseModel):
     reload: bool = True
     default_proc_name: str = "ESG-Fastapi"
     post_fork: Callable[[Arbiter, Worker], None] = opentelemetry_init
+    preload_app: bool = True
 
     @field_validator("workers", mode="before")
     @classmethod
@@ -130,85 +116,11 @@ class GunicornSettings(BaseModel):
         """
         if value is not None:
             return value
-        if "host" in info.data and "port" in info.data:
+        host = info.data["host"]
+        port = info.data["port"]
+        if host and port:
             return f"{info.data['host']}:{info.data['port']}"
         raise ValueError(
             "Could not determine a binding address for the Gunicorn server. "
             "Please provide a value for either 'bind' or both 'host' and 'port'."
         )
-
-
-class ESGFLogging(LoggingConfig):
-    """Python's logging DictConfig represented as a typed and validated Pydantic model."""
-
-    formatters: OptionalModelDict[Formatter] = {
-        "otel": Formatter.model_validate(
-            {
-                "datefmt": "[%Y-%m-%d %H:%M:%S %z]",
-                "style": "%",
-                "format": OTEL_DEFAULT_LOGGING_FORMAT,
-            }
-        )
-    }
-    handlers: OptionalModelDict[Handler] = {
-        "stdout": Handler.model_validate({"formatter": "otel", "stream": "ext://sys.stdout"}),
-        "stderr": Handler.model_validate({"formatter": "otel", "stream": "ext://sys.stderr"}),
-    }
-    loggers: OptionalModelDict[LoggerModel] = {
-        "uvicorn": {"handlers": ["stdout"]},
-        "uvicorn.access": {"handlers": ["stdout"]},
-        "uvicorn.error": {"handlers": ["stderr"]},
-        "gunicorn.access": {"handlers": ["stdout"]},
-        "gunicorn.error": {"handlers": ["stderr"]},
-    }
-    root: OptionalModel[LoggerModel] = LoggerModel.model_validate(
-        {"handlers": ["stdout"], "level": "INFO", "propagate": True}
-    )
-
-    def model_post_init(self: Self, __context) -> None:
-        """Ensure the logger is configured as soon as the model is validated."""
-        self.configure()
-
-
-class OTELSettings(GeneratedOTELBase()):
-    """Settings class that exports all OpenTelemetry settings as environment variables.
-
-    We inherit from the model produced by the GeneratedOTELBase class factory to keep that logic separate.
-    The fields generated on that model all have a default value of `None` and the `model_post_init` hook
-    will only export fields that have a value set, that way we don't need to know what all the OpenTelemetry
-    settings env vars default to (it doesn't seem to be exposed anywhere).
-    """
-
-    otel_service_name: Exportable[str] = "ESG FastAPI"
-    otel_python_log_level: Exportable[str] = "info"
-    otel_python_logging_auto_instrumentation_enabled: Exportable[str] = "true"
-    otel_python_log_correlation: Exportable[str] = "true"
-
-
-class Settings(BaseSettings, ClassModule):
-    """An importable Pydantic Settings object."""
-
-    model_config = SettingsConfigDict(env_prefix="ESG_FASTAPI_", env_nested_delimiter="__")
-
-    gunicorn: GunicornSettings = Field(default_factory=GunicornSettings)
-    logging: LoggingConfig = Field(default_factory=ESGFLogging)
-    otel_settings: OTELSettings = Field(default_factory=OTELSettings)
-
-    # Globus functions are typed to accept UUIDs so use the coercion for validation
-    # ref: https://github.com/globus/globus-sdk-python/blob/b6fa2edc7e81201494d150585078a99d3926dfc7/src/globus_sdk/_types.py#L18
-    globus_search_index: UUID4 = Field(
-        default=UUID("ea4595f4-7b71-4da7-a1f0-e3f5d8f7f062", version=4),
-        title="Globus Search Index ID",
-        description="The ID of the Globus Search Index queries will be submitted to. The default is the ORNL Globus Search Index.",
-    )
-
-
-sys.modules[__name__] = Settings()
-
-# Static checkers don't see the __getattr__ method on the instance, so we have to explicitly expose
-# properties at the module level.
-if TYPE_CHECKING:  # pragma: no cover
-    globus_search_index = Settings.globus_search_index
-    gunicorn: GunicornSettings = Settings.gunicorn
-    logging: LoggingConfig = Settings.logging
-    otel_settings: OTELSettings = Settings.otel_settings

@@ -5,10 +5,7 @@ import os
 from typing import Self
 
 import pytest
-from opentelemetry.instrumentation.logging import LoggingInstrumentor
 from pytest_mock import MockFixture
-
-from esg_fastapi.utils import GeneratedOTELBase
 
 
 def test_settings_is_usable() -> None:
@@ -38,37 +35,31 @@ def test_Gunicorn_bind_from_host_and_port() -> None:
     assert gs.bind == "1.1.1.1:1111"
 
 
-def test_Gunicorn_bind_port_required() -> None:
+def test_Gunicorn_no_bind_host_and_port_required() -> None:
     """If `bind` is empty, `host` and `port` are required."""
-    from esg_fastapi import settings
-
-    cls = type(settings.gunicorn)
+    from esg_fastapi.configuration.gunicorn import GunicornSettings
 
     with pytest.raises(ValueError):
-        cls(host=None, port=None)
+        GunicornSettings(host=None, port=None)
 
 
-# @patch.object(sys.modules["opentelemetry.instrumentation.auto_instrumentation.sitecustomize"], "initialize")
-def test_Gunicorn_post_fork_instruments_app(mocker: MockFixture) -> None:
-    """Calling the `post_fork` hook on an app causes OTEL to mark it as instrumented."""
-    from esg_fastapi import settings
+# TODO: move this somewhere sensible
+def test_app_factory_instruments_app(mocker: MockFixture) -> None:
+    """The created app is marked as insturmented by the FastAPIInstrumentor."""
+    from esg_fastapi.api.versions.v1.routes import app_factory
 
-    arbiter = mocker.Mock()
-    worker = mocker.MagicMock(
-        app=mocker.Mock(
-            _is_instrumented_by_opentelemetry=False,
-        )
-    )
-
-    settings.gunicorn.post_fork(arbiter, worker)
-    assert worker.app._is_instrumented_by_opentelemetry is True
+    app = app_factory()
+    assert app._is_instrumented_by_opentelemetry is True
 
 
-def test_OTEL_Logging_is_instrumented() -> None:
-    """OTEL instruments logging upon import."""
-    import esg_fastapi
+def test_OTELSettings_instruments_logger(monkeypatch: pytest.MonkeyPatch, mocker: MockFixture) -> None:
+    """Logging is intrumented by settings."""
+    from esg_fastapi.configuration.logging import ESGFLogging, record_factory
 
-    assert LoggingInstrumentor()._is_instrumented_by_opentelemetry
+    fake_set_log_factory = mocker.Mock()
+    monkeypatch.setattr("esg_fastapi.configuration.logging.logging.setLogRecordFactory", fake_set_log_factory)
+    ESGFLogging()
+    assert fake_set_log_factory.called_once_with(record_factory)
 
 
 @pytest.mark.parametrize(
@@ -87,7 +78,10 @@ def test_root_logger_has_OTEL_span_id_and_trace_id(caplog: pytest.LogCaptureFixt
             assert "trace_id" in root_formatter.format(record)
 
 
+# TODO: extract the entry point mocking into a fixture
 def test_OTEL_env_vars_on_generated_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Variables specified by OTEL env var entry point are created as fields on the generated base model."""
+
     class FakeEntrypoint:
         def load(self: Self) -> type:
             return type("FakeModule", tuple(), {"OTEL_TEST_VAR": "preset"})
@@ -95,12 +89,16 @@ def test_OTEL_env_vars_on_generated_model(monkeypatch: pytest.MonkeyPatch) -> No
     def mock_entry_points(group: str = "ignored") -> list[FakeEntrypoint]:
         return [FakeEntrypoint()]
 
-    monkeypatch.setattr("esg_fastapi.utils.entry_points", mock_entry_points)
+    monkeypatch.setattr("esg_fastapi.configuration.opentelemetry.entry_points", mock_entry_points)
+    from esg_fastapi.configuration.opentelemetry import GeneratedOTELBase
+
     ModelClass = GeneratedOTELBase()
     assert hasattr(ModelClass(), "otel_test_var")
 
 
 def test_OTELSettings_exports_set_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Generated fields with subsequent values set are exported to the environment."""
+
     class FakeEntrypoint:
         def load(self: Self) -> type:
             return type("FakeModule", tuple(), {"OTEL_TEST_VAR": "preset"})
@@ -108,7 +106,8 @@ def test_OTELSettings_exports_set_env_vars(monkeypatch: pytest.MonkeyPatch) -> N
     def mock_entry_points(group: str = "ignored") -> list[FakeEntrypoint]:
         return [FakeEntrypoint()]
 
-    monkeypatch.setattr("esg_fastapi.utils.entry_points", mock_entry_points)
+    monkeypatch.setattr("esg_fastapi.configuration.opentelemetry.entry_points", mock_entry_points)
+    from esg_fastapi.configuration.opentelemetry import GeneratedOTELBase
 
     class TestClass(GeneratedOTELBase()): ...
 
