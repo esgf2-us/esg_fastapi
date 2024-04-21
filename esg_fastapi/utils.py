@@ -1,21 +1,11 @@
 """Utilities that don't fit well in other modules."""
 
-import logging
-import os
 import time
 from collections.abc import Sequence
-from enum import Enum
-from importlib.machinery import ModuleSpec
-from importlib.metadata import entry_points
-from types import ModuleType, TracebackType
-from typing import TYPE_CHECKING, Annotated, Any, Mapping, MutableSequence, Optional, Self, Type
+from types import TracebackType
+from typing import Any, Optional, Self, Type
 
 from annotated_types import T
-from gunicorn.arbiter import Arbiter
-from gunicorn.workers.base import Worker
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from pydantic import BaseModel, Field, create_model
-from pydantic.fields import FieldInfo
 
 
 class Timer:
@@ -47,86 +37,6 @@ class Timer:
         """Close the context and stop the timer."""
         self.end_time = time.monotonic_ns()
         self.time = int((self.end_time - self.start_time) // 1e9)
-
-
-def Cast(baseclass: T) -> T:
-    """Inherit from `baseclass` only for type checking purposes.
-
-    This allows informing type checkers that the inheriting class ducktypes
-    as the given `baseclass` without actually inheriting from it.
-
-    Notes:
-    - `typing.Protocol` is the right answer to this problem, but `sys.modules.__setitem__`
-      currently checks for the ModuleType directly rather than a Protocol.
-    - `pydantic_settings.BaseSettings` can't inherit from `ModuleType` due to conflicts
-      in its use of `__slots__`
-    """
-    if TYPE_CHECKING:
-        return (
-            baseclass  # pragma: no cover TODO: coverage doesn't report this line as covered even though the tests pass.
-        )
-    return object
-
-
-class ClassModule(Cast(ModuleType)):
-    """Mixin class that allows a subclass to pretend to be a Module.
-
-    This isn't required for the class to be used as intended, but these
-    attributes make the class instance adhere to the PEP module interface.
-    """
-
-    __path__: MutableSequence[str] = []
-    __name__: str = __name__
-    __file__: str | None = __file__
-    __cached__: str = __cached__
-    __spec__: ModuleSpec | None = __spec__
-
-
-Exportable = Annotated[T, "Exportable"]
-FieldDefinitions = Mapping[str, tuple[type, FieldInfo] | Annotated]
-
-
-class ExportingModel(BaseModel):
-    def model_post_init(self: Self, _) -> None:
-        """Export any set model field values that are annotated with `Exportable` as environment variables.
-
-        It iterates through the model fields, checks if the field is annotated with "Exportable",
-        and if a value is set for the field, it sets the corresponding environment variable.
-        OpenTelemetry is configured entirely through environment variables. Since they don't provide a way
-        to set these options programmatically, we generate a model from all environment variables that
-        they respect and during this post-init hook, export any that have values to the environment so that
-        OpenTelemetry will see them and we can configure everything in one place and generate docs and etc.
-        """
-        for name, field in self.model_fields.items():
-            if "Exportable" in field.metadata and (field_value := getattr(self, name)):
-                os.environ[name.upper()] = field_value
-
-
-def GeneratedOTELBase() -> type[BaseModel]:
-    """Generates a BaseModel class with fields for all OpenTelemetry environment variables.
-
-    We use the same method (`importlib.metadata.entrypoints`) as OpenTelemetry's auto_instrumentation to
-    gather the list of all environment variables that OpenTelemetry respects. All such discovered environment
-    variables are `.lower()` and created as Fields on the generated model. They're also Annoted by the
-    `Exportable` Generic Type so that they can be distinguished from types and properties on sub classes
-    that we might not want to export to the environment.
-    """
-    return create_model(
-        "OTELBase",
-        __config__=None,
-        __doc__=None,
-        __base__=ExportingModel,
-        __cls_kwargs__=None,
-        __validators__=None,
-        __module__=__name__,
-        __slots__=None,
-        **{
-            var.lower(): (Exportable[str], Field(default=None))
-            for ep in entry_points(group="opentelemetry_environment_variables")
-            for var in dir(ep.load())
-            if var.startswith("OTEL_")
-        },
-    )
 
 
 def one_or_list(value: Sequence[T] | T) -> T | Sequence[T]:
@@ -208,16 +118,3 @@ def format_fq_field(field: tuple[str, Any]) -> str:
     key, value = field
     value = one_or_list(value)
     return f"{key}:{value if key in non_quoted_fields else quote_str(value)}"
-
-
-LogLevels = Enum("LogLevels", logging.getLevelNamesMapping())
-
-
-def opentelemetry_init(arbiter: Arbiter, worker: Worker) -> None:
-    """Intended as a `post_fork` hook so that Gunicorn workers are instrumented _after_ forking to prevent locking issues.
-
-    Args:
-        arbiter (Arbiter): The Gunicorn arbiter.
-        worker (Worker): The Gunicorn worker.
-    """
-    FastAPIInstrumentor().instrument_app(worker.app)

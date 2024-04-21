@@ -26,12 +26,10 @@ from typing import (
 from annotated_types import T
 from fastapi import Query
 from pydantic import (
-    AfterValidator,
     BaseModel,
     BeforeValidator,
     ConfigDict,
     Field,
-    PlainSerializer,
     SerializeAsAny,
     StringConstraints,
     computed_field,
@@ -40,6 +38,17 @@ from pydantic import (
 )
 from pydantic_core import Url
 
+from esg_fastapi.api.versions.v1.types import (
+    LowerCased,
+    MultiValued,
+    SolrDoc,
+    SolrFQ,
+    Stringified,
+    SupportedAsFacets,
+    SupportedAsFilters,
+    SupportedAsFQ,
+    SupportedAsSolrDocs,
+)
 from esg_fastapi.utils import (
     ensure_list,
     format_fq_field,
@@ -47,9 +56,6 @@ from esg_fastapi.utils import (
 )
 
 NON_QUERIABLE_FIELDS = {"query", "format", "limit", "offset", "replica", "distrib", "facets"}
-MultiValued = Annotated[list[T], BeforeValidator(ensure_list), Query()]
-Stringified = Annotated[T, AfterValidator(lambda x: str(x))]
-LowerCased = Annotated[T, PlainSerializer(lambda x: x.lower())]
 
 
 class ESGSearchQuery(BaseModel):
@@ -332,12 +338,6 @@ class GlobusFacet(BaseModel):
     """The name of the field to facet on."""
 
 
-SupportedAsFilters = dict | Sequence[GlobusFilter]
-"""Represents types convertable to a list of GlobusFilter objects."""
-
-SupportedAsFacets = str | Sequence[GlobusFacet]
-
-
 def is_sequence_of(value: object, value_type: type[T]) -> TypeGuard[Sequence[T]]:
     """Check if a given value is a sequence of a specific type.
 
@@ -610,10 +610,6 @@ class GlobusSearchResult(BaseModel):
     """
 
 
-SolrFQ = str | Sequence[str]
-SupportedAsFQ = ESGSearchQuery | SolrFQ
-
-
 class ESGSearchResultParams(BaseModel):
     """Parameters for the ESG Search Result.
 
@@ -768,11 +764,6 @@ class ESGSearchHeader(BaseModel):
     """Time taken to process the request."""
     params: ESGSearchResultParams
     """Parameters for the ESG Search Result."""
-
-
-# TODO: we should be able to better specify the typing of docs
-SolrDoc = dict[str, Any]
-SupportedAsSolrDocs = SolrDoc | Sequence[GlobusMetaResult]
 
 
 class ESGSearchResult(BaseModel):

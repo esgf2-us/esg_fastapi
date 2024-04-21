@@ -6,7 +6,6 @@ from fastapi.testclient import TestClient
 from pytest_bdd import given, scenarios, then, when
 from pytest_bdd.parsers import parse
 
-from esg_fastapi import api
 from esg_fastapi.observability.models import ProbeResponse
 
 scenarios("Observability")
@@ -33,14 +32,10 @@ def load_example(probe_type: Literal["ready", "live"]) -> None:
 
 @when(parse("its {endpoint} is querried"), target_fixture="probe_response")
 def send_request(endpoint: str) -> ProbeResponse:
-    """Send request to ESG FastAPI and return its response as a fixture.
+    """Send request to ESG FastAPI and return its response as a fixture."""
+    from esg_fastapi.api.main import app_factory
 
-    Notes:
-    - We use the TestClient from FastAPI to send the request to the ESG FastAPI service
-      which currently raises a Warning until the next release of FastAPI.
-      ref: https://github.com/encode/starlette/issues/2524
-    """
-    client = TestClient(api.wsgi_factory())
+    client = TestClient(app_factory())
 
     return ProbeResponse.model_validate(client.get(endpoint).json())
 
