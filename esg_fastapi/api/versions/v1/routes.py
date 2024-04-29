@@ -1,10 +1,14 @@
 """Starting point/base for the ESG FastAPI service and it's versions and components."""
 
 import logging
+from contextvars import ContextVar
+from typing import Any, Generator
 
+import pyroscope
 import requests
 from fastapi import APIRouter, Depends, FastAPI, Request
 from globus_sdk import SearchClient
+from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from typing_extensions import TypedDict
 
@@ -42,11 +46,22 @@ def app_factory() -> FastAPI:
     return app
 
 
-dependency_injector = Depends()
+tracing_tags = ContextVar("tracing_tags")
+
+
+def query_instrumentor(query: ESGSearchQuery = Depends()) -> Generator[ESGSearchQuery, Any, None]:
+    current_span: trace.Span = trace.get_current_span()
+    tracing_tags.set({key: str(value) for key, value in query.model_dump(exclude_none=True).items()})
+    current_span.set_attributes(tracing_tags.get())
+    with pyroscope.tag_wrapper(tracing_tags.get()):
+        yield query
+
+
+TrackedESGSearchQuery: ESGSearchQuery = Depends(query_instrumentor)
 
 
 @router.get("/")
-async def search_globus(q: ESGSearchQuery = dependency_injector) -> ESGSearchResponse:
+async def search_globus(q: ESGSearchQuery = TrackedESGSearchQuery) -> ESGSearchResponse:
     """This function performs a search using the Globus API based on the provided ESG search query.
 
     Parameters:
@@ -68,9 +83,14 @@ async def search_globus(q: ESGSearchQuery = dependency_injector) -> ESGSearchRes
     globus_query = GlobusSearchQuery.from_esg_search_query(q)
     with Timer() as t:
         # TODO: OTEL will time this anyway -- can we get the time from it?
-        globus_response = GlobusSearchResult.model_validate(
-            SearchClient().post_search(settings.globus_search_index, globus_query.model_dump(exclude_none=True)).data
-        )
+        tracer = trace.get_tracer("esg_fastapi")
+        with tracer.start_as_current_span("globus_search"):
+            response = (
+                SearchClient()
+                .post_search(settings.globus_search_index, globus_query.model_dump(exclude_none=True))
+                .data
+            )
+        globus_response = GlobusSearchResult.model_validate(response)
 
     return ESGSearchResponse.model_validate(
         {
@@ -114,7 +134,7 @@ class SearchParityFixture(TypedDict):
 
 
 @router.get("/make_fixture")
-def make_fixture(raw_request: Request, q: ESGSearchQuery = dependency_injector) -> SearchParityFixture:
+def make_fixture(raw_request: Request, q: ESGSearchQuery = TrackedESGSearchQuery) -> SearchParityFixture:
     """This function makes a fixture for comparing ESG and Globus search results.
 
     Parameters:

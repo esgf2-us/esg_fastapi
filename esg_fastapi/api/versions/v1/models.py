@@ -293,9 +293,8 @@ class ESGSearchQuery(BaseModel):
     facets: Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"\w+(,\w+)*?")] | None = None
     """A comma-separated list of field names to facet on."""
 
-    @computed_field
     @property
-    def queriable_fields(self: Self) -> set[str]:
+    def _queriable_fields(self: Self) -> set[str]:
         """All fields that are queriable in Solr."""
         return {field for field in self.model_fields if field not in NON_QUERIABLE_FIELDS}
 
@@ -453,7 +452,7 @@ class GlobusSearchQuery(BaseModel):
             advanced=True,
             limit=query.limit,
             offset=query.offset,
-            filters=query.model_dump(exclude_none=True, include=query.queriable_fields),
+            filters=query.model_dump(exclude_none=True, include=query._queriable_fields),
             facets=query.facets,
         )
 
@@ -639,7 +638,7 @@ class ESGSearchResultParams(BaseModel):
 
     @field_validator("fq", mode="before")
     @staticmethod
-    def convert_and_validate_fq(input: SupportedAsFQ) -> SolrFQ:
+    def convert_and_validate_fq(value: SupportedAsFQ) -> SolrFQ:
         """Convert and validate the input for the `fq` field.
 
         Parameters:
@@ -656,16 +655,16 @@ class ESGSearchResultParams(BaseModel):
         - If the input value is a list of strings, it is validated as a SolrFQ object.
         - If the input value is an instance of `ESGSearchQuery`, it is converted to a SolrFQ object by first converting the queryable fields of the query into a list of strings, and then validating the resulting list.
         """
-        if isinstance(input, str):
-            input = [atom.strip() for atom in input.split(",")]
-        if is_sequence_of(input, str):
-            return one_or_list(input)
-        elif isinstance(input, ESGSearchQuery):
-            fq_fields = input.model_dump(exclude_none=True, include=input.queriable_fields)
+        if isinstance(value, str):
+            value = [atom.strip() for atom in value.split(",")]
+        if is_sequence_of(value, str):
+            return one_or_list(value)
+        elif isinstance(value, ESGSearchQuery):
+            fq_fields = value.model_dump(exclude_none=True, include=value._queriable_fields)
             return one_or_list([format_fq_field(field) for field in fq_fields.items()])
         else:
             raise ValueError(  # pragma: no cover TODO: pytest.raises() masks this line so coverage doesn't think it was executed
-                f"Expected input convertible to SolrFQ one of {get_args(SupportedAsFQ)}, got {type(input)}"
+                f"Expected input convertible to SolrFQ one of {get_args(SupportedAsFQ)}, got {type(value)}"
             )
 
     facet_field: None | list[str] = Field(alias="facet.field", default=None, exclude=True)

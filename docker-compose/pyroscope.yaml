@@ -1,0 +1,9 @@
+tracing:
+  enabled: true
+  profiling_enabled: true
+
+pyroscopedb:
+  max_block_duration: 5m
+
+self_profiling:
+  disable_push: true

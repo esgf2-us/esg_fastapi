@@ -1,10 +1,22 @@
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Annotated, Any, ForwardRef, Mapping
+from typing import TYPE_CHECKING, Annotated, Any, Callable, ForwardRef, Mapping
 
 from annotated_types import T
 from fastapi import Query
-from pydantic import AfterValidator, BeforeValidator, PlainSerializer
+from pydantic import AfterValidator, BeforeValidator, GetJsonSchemaHandler, PlainSerializer
 from pydantic.fields import FieldInfo
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import CoreSchema
+from pydantic_core.core_schema import (
+    chain_schema,
+    is_instance_schema,
+    json_or_python_schema,
+    no_info_plain_validator_function,
+    str_schema,
+    to_string_ser_schema,
+    union_schema,
+)
+from semver import Version
 
 from esg_fastapi.utils import ensure_list
 
@@ -47,3 +59,37 @@ SupportedAsSolrDocs = SolrDoc | Sequence[GlobusMetaResult]
 
 FieldDefinitions = Mapping[str, tuple[type, FieldInfo] | Annotated]
 """Types accepted by the `fielddefinitions` arg of `pydantic.create_model`."""
+
+
+class SemVer(str):
+    """Represents a semantic version string."""
+
+    @staticmethod
+    def validate_from_str(value: str) -> Version:
+        return Version.parse(value)
+
+    @classmethod
+    def __get_pydantic_core_schema__(cls, _source_type: Any, _handler: Callable[[Any], CoreSchema]) -> CoreSchema:
+        """Generates the Pydantic core schema for a specific source type using the provided handler."""
+        from_str_schema = chain_schema(
+            [
+                str_schema(),
+                no_info_plain_validator_function(cls.validate_from_str),
+            ]
+        )
+
+        return json_or_python_schema(
+            json_schema=from_str_schema,
+            python_schema=union_schema(
+                [
+                    is_instance_schema(Version),
+                    from_str_schema,
+                ]
+            ),
+            serialization=to_string_ser_schema(),
+        )
+
+    @classmethod
+    def __get_pydantic_json_schema__(cls, _: CoreSchema, handler: GetJsonSchemaHandler) -> JsonSchemaValue:
+        """Generates the Pydantic JSON schema using the provided core schema and handler."""
+        return handler(str_schema())

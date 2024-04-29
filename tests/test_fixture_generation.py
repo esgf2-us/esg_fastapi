@@ -2,7 +2,6 @@ import json
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
 from pytest_mock import MockerFixture
 
 from esg_fastapi.api.versions.v1.routes import SearchParityFixture
@@ -20,8 +19,14 @@ def json_example() -> SearchParityFixture:
         return json.load(fixture)
 
 
-def test_fixture_generation(json_example: SearchParityFixture, mocker: MockerFixture) -> None:
+def test_fixture_generation(
+    json_example: SearchParityFixture, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Ensure that generated fixture format is the same given the same query responses."""
+
+    monkeypatch.setenv("OTEL_SERVICE_NAME", "foo")
+    from fastapi.testclient import TestClient
+
     from esg_fastapi.api.main import app_factory
 
     client = TestClient(app_factory())

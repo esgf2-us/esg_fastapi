@@ -1,0 +1,101 @@
+version: "3"
+name: esg-fastapi
+
+volumes:
+  tempo-data:
+
+services:
+
+  esg-fastapi:
+    build:
+      context: ..
+      dockerfile: Dockerfile.local
+    network_mode: host
+    ports:
+    - "1337:1337"
+    logging:
+      driver: journald
+      options:
+        tag: esg-fastapi
+
+  pyroscope:
+    image: grafana/pyroscope
+    environment:
+      JAEGER_AGENT_HOST: localhost
+      JAEGER_SAMPLER_TYPE: const
+      JAEGER_SAMPLER_PARAM: 1
+    network_mode: host
+    command:
+    - "-server.grpc-listen-port=3030"
+    - "-config.file=/etc/pyroscope.yaml"
+    ports:
+    - '4040:4040'
+    volumes:
+    - ./pyroscope.yaml:/etc/pyroscope.yaml
+
+  tempo:
+    image: grafana/tempo
+    network_mode: host
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+    - ./tempo.yaml:/etc/tempo.yaml
+    - tempo-data:/var/tempo:rw,z
+    ports:
+    - "14268:14268"  # jaeger ingest
+    - "3200:3200"   # tempo
+    - "9095:9095" # tempo grpc
+    - "4317:4317"  # otlp grpc
+    - "4318:4318"  # otlp http
+    - "9411:9411"   # zipkin
+
+  prometheus:
+    image: prom/prometheus
+    network_mode: host
+    command:
+    - --config.file=/etc/prometheus.yaml
+    - --web.enable-remote-write-receiver
+    - --enable-feature=exemplar-storage
+    volumes:
+    - ./prometheus.yaml:/etc/prometheus.yaml
+    ports:
+    - "9090:9090"
+
+  grafana:
+    image: grafana/grafana
+    network_mode: host
+    volumes:
+    - ./grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+    environment:
+    - GF_AUTH_ANONYMOUS_ENABLED=true
+    - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    - GF_AUTH_DISABLE_LOGIN_FORM=true
+    - GF_INSTALL_PLUGINS=pyroscope-panel
+    - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor traceQLStreaming metricsSummary traceToProfiles tracesEmbeddedFlameGraph traceToMetrics
+    ports:
+    - "3000:3000"
+
+  elasticsearch:
+    image: elasticsearch:8.13.0
+    network_mode: host
+    environment:
+    - bootstrap.memory_lock=false
+    - 'ES_JAVA_OPTS=-Xms512m -Xmx512m'
+    - discovery.type=single-node
+    - xpack.security.enabled=false
+    ports:
+    - '9200:9200'
+    - '9300:9300'
+
+  fluent-bit:
+    image: fluent/fluent-bit
+    network_mode: host
+    command:
+    - -c
+    - /fluent-bit/etc/fluent-bit.yaml
+    volumes:
+    - ./fluent-bit.yaml:/fluent-bit/etc/fluent-bit.yaml
+    - /etc/machine-id:/etc/machine-id:ro
+    - /var/log/journal:/var/log/journal
+    # depends_on:
+    # - elasticsearch
+    privileged: true

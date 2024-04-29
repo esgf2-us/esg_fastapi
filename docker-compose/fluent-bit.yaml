@@ -1,0 +1,49 @@
+service:
+  daemon: Off
+  flush: 5
+  log_level: info
+
+pipeline:
+  inputs:
+  - name: systemd
+    Systemd_Filter: CONTAINER_TAG=esg-fastapi
+    tag: systemd
+
+    processors:
+      logs:
+      - name: content_modifier
+        action: extract
+        key: "MESSAGE"
+        context: body
+        pattern: 'trace_id=(?<trace_id>[^\s]+)'
+      - name: content_modifier
+        action: extract
+        key: "MESSAGE"
+        context: body
+        pattern: 'span_id=(?<span_id>[^\s]+)'
+      - name: content_modifier
+        action: extract
+        key: "MESSAGE"
+        context: body
+        pattern: 'resource\.service\.name=(?<resource_service_name>[^\s]+)'
+      - name: content_modifier
+        action: rename
+        key: resource_service_name
+        value: resource.service.name
+      - name: content_modifier
+        action: extract
+        key: "MESSAGE"
+        context: body
+        pattern: 'trace_sampled=(?<trace_sampled>True|False)'
+
+  outputs:
+  # - name: stdout
+  #   match: '*'
+  #   format: json_lines
+  - name: es
+    match: '*'
+    type: elasticsearch
+    host: localhost
+    port: 9200
+    logstash_format: On
+    suppress_type_name: On

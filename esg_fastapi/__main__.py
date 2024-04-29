@@ -2,13 +2,15 @@
 
 from typing import Self
 
+import pyroscope
 from fastapi import FastAPI
 from gunicorn.app.base import BaseApplication
 from gunicorn.arbiter import Arbiter
 from opentelemetry import trace
-from opentelemetry.sdk.resources import Resource
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from pyroscope.otel import PyroscopeSpanProcessor
 
 from esg_fastapi import settings
 
@@ -39,16 +41,12 @@ class Server(BaseApplication):
 
 
 # TODO: more accurate init: https://opentelemetry-python.readthedocs.io/en/latest/api/trace.html#opentelemetry.trace.TracerProvider
+provider = TracerProvider()
+provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+provider.add_span_processor(PyroscopeSpanProcessor())
+# provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+trace.set_tracer_provider(provider)
 
-tracer: trace.Tracer = trace.get_tracer(
-    instrumenting_module_name="esg-fastapi",
-    tracer_provider=TracerProvider(
-        resource=Resource.create(),
-        active_span_processor=BatchSpanProcessor(
-            span_exporter=ConsoleSpanExporter()  # type: ignore -- library typing is overly specific
-        ),
-    ),
-)
+pyroscope.configure(**settings.pyroscope.model_dump(mode="json"))
 
-with tracer.start_as_current_span("main") as span:
-    Arbiter(Server()).run()
+Arbiter(Server()).run()

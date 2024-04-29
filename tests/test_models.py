@@ -81,4 +81,4 @@ def test_ESGSearchResponse_facet_counts_creation(source, output, expectation) ->
 
 def test_queriable_fields() -> None:
     """Non-queriable fields should be excluded from the property."""
-    assert all(field not in ESGSearchQuery().queriable_fields for field in NON_QUERIABLE_FIELDS)
+    assert all(field not in ESGSearchQuery()._queriable_fields for field in NON_QUERIABLE_FIELDS)

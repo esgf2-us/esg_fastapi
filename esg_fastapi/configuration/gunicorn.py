@@ -10,7 +10,6 @@ from gunicorn.workers.base import Worker
 from pydantic import BaseModel, Field, IPvAnyAddress, ValidationInfo, field_validator
 
 from esg_fastapi.api.versions.v1.models import Stringified
-from esg_fastapi.configuration.opentelemetry import opentelemetry_init
 
 from .logging import LogLevels
 
@@ -59,7 +58,7 @@ class GunicornSettings(BaseModel):
     web_concurrency: int = 0
     max_workers: int = 1
     host: Optional[IPvAnyAddress] = Field(default="0.0.0.0")  # noqa: S104 -- primarily used for k8s so default to making that easier
-    port: Optional[int] = 8080
+    port: Optional[int] = 1337
 
     # Actual Gunicorn config variables
     workers: ValidatedDefault[int] = 0
@@ -74,7 +73,6 @@ class GunicornSettings(BaseModel):
     bind: ValidatedDefault[str] = Field(default=None)
     reload: bool = True
     default_proc_name: str = "ESG-Fastapi"
-    post_fork: Callable[[Arbiter, Worker], None] = opentelemetry_init
     preload_app: bool = True
 
     @field_validator("workers", mode="before")

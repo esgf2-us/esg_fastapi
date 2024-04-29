@@ -1,11 +1,12 @@
 import os
+from functools import partial
 from importlib.metadata import entry_points
+from tempfile import mkdtemp
 from typing import Annotated, Self
 
 from annotated_types import T
-from gunicorn.arbiter import Arbiter
-from gunicorn.workers.base import Worker
-from pydantic import BaseModel, Field, create_model
+from pydantic import AnyUrl, BaseModel, Field, create_model
+from pydantic_core import Url
 
 Exportable = Annotated[T, "Exportable"]
 
@@ -23,7 +24,7 @@ class ExportingModel(BaseModel):
         """
         for name, field in self.model_fields.items():
             if "Exportable" in field.metadata and (field_value := getattr(self, name)):
-                os.environ[name.upper()] = field_value
+                os.environ[name.upper()] = str(field_value)
 
 
 def GeneratedOTELBase() -> type[BaseModel]:
@@ -62,19 +63,11 @@ class OTELSettings(GeneratedOTELBase()):
     settings env vars default to (it doesn't seem to be exposed anywhere).
     """
 
-    otel_service_name: Exportable[str] = "ESG FastAPI"
+    otel_service_name: Exportable[str]  # Will be set by the parent model
     otel_python_log_level: Exportable[str] = "info"
     otel_python_logging_auto_instrumentation_enabled: Exportable[str] = "true"
     otel_python_log_correlation: Exportable[str] = "true"
+    otel_exporter_otlp_traces_endpoint: Exportable[AnyUrl] = Url("http://localhost:4317")
 
-
-def opentelemetry_init(arbiter: Arbiter, worker: Worker) -> None:
-    """Intended as a `post_fork` hook so that Gunicorn workers are instrumented _after_ forking to prevent locking issues.
-
-    Args:
-        arbiter (Arbiter): The Gunicorn arbiter.
-        worker (Worker): The Gunicorn worker.
-    """
-    arbiter.log.info("Worker spawned (pid: %s)", worker.pid)
-
-    # FastAPIInstrumentor().instrument_app(worker.app.callable)
+    # TODO: This doesn't really fit here, but for now, stick it with the other Exportables
+    prometheus_multiproc_dir: Exportable[str] = Field(default_factory=partial(mkdtemp, prefix="/dev/shm/"))  # noqa: S108 -- `mkdtemp` is secure, we need to ensure a memory-backed tmp or the worker threads will hang waiting on disk i/o
