@@ -52,14 +52,18 @@ def test_app_factory_instruments_app(mocker: MockFixture) -> None:
     assert app._is_instrumented_by_opentelemetry is True
 
 
-def test_OTELSettings_instruments_logger(monkeypatch: pytest.MonkeyPatch, mocker: MockFixture) -> None:
+def test_OTELSettings_instruments_logger(mocker: MockFixture, monkeypatch: pytest.MonkeyPatch) -> None:
     """Logging is intrumented by settings."""
-    from esg_fastapi.configuration.logging import ESGFLogging, record_factory
+    mock_record_factory = mocker.Mock()
+    mock_record_factory_setter = mocker.Mock()
+    fake_service_name = "foo"
+    monkeypatch.setattr("esg_fastapi.configuration.logging.record_factory", mock_record_factory)
+    monkeypatch.setattr("esg_fastapi.configuration.logging.logging.setLogRecordFactory", mock_record_factory_setter)
+    from esg_fastapi.configuration.logging import ESGFLogging
 
-    fake_set_log_factory = mocker.Mock()
-    monkeypatch.setattr("esg_fastapi.configuration.logging.logging.setLogRecordFactory", fake_set_log_factory)
-    ESGFLogging()
-    assert fake_set_log_factory.called_once_with(record_factory)
+    ESGFLogging(service_name=fake_service_name)
+    assert mock_record_factory_setter.call_args.args[0].func == mock_record_factory
+    assert mock_record_factory_setter.call_args.args[0].keywords["service_name"] == fake_service_name
 
 
 @pytest.mark.parametrize(
@@ -67,12 +71,15 @@ def test_OTELSettings_instruments_logger(monkeypatch: pytest.MonkeyPatch, mocker
     logging.getLevelNamesMapping().values(),
     ids=logging.getLevelNamesMapping().keys(),
 )
-def test_root_logger_has_OTEL_span_id_and_trace_id(caplog: pytest.LogCaptureFixture, log_level: int) -> None:
+def test_root_logger_has_OTEL_span_id_and_trace_id(
+    caplog: pytest.LogCaptureFixture, log_level: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """At all log levels, root logger includes OTEL trace and span ids."""
     root_formatter = logging.root.handlers[0].formatter
     with caplog.at_level(log_level):
         logger = logging.getLogger()
         logger.log(log_level, "test")
+        assert len(caplog.records) or log_level == logging.NOTSET, "No logs produced"
         for record in caplog.records:
             assert "span_id" in root_formatter.format(record)
             assert "trace_id" in root_formatter.format(record)
@@ -84,7 +91,7 @@ def test_OTEL_env_vars_on_generated_model(monkeypatch: pytest.MonkeyPatch) -> No
 
     class FakeEntrypoint:
         def load(self: Self) -> type:
-            return type("FakeModule", tuple(), {"OTEL_TEST_VAR": "preset"})
+            return type("FakeModule", (), {"OTEL_TEST_VAR": "preset"})
 
     def mock_entry_points(group: str = "ignored") -> list[FakeEntrypoint]:
         return [FakeEntrypoint()]
@@ -101,7 +108,7 @@ def test_OTELSettings_exports_set_env_vars(monkeypatch: pytest.MonkeyPatch) -> N
 
     class FakeEntrypoint:
         def load(self: Self) -> type:
-            return type("FakeModule", tuple(), {"OTEL_TEST_VAR": "preset"})
+            return type("FakeModule", (), {"OTEL_TEST_VAR": "preset"})
 
     def mock_entry_points(group: str = "ignored") -> list[FakeEntrypoint]:
         return [FakeEntrypoint()]

@@ -1,10 +1,14 @@
 """Utilities that don't fit well in other modules."""
 
+import asyncio
+import logging
 import time
 from collections.abc import Sequence
+from functools import wraps
 from types import TracebackType
 from typing import Any, Optional, Self, Type
 
+import pyroscope
 from annotated_types import T
 
 
@@ -60,9 +64,7 @@ def one_or_list(value: Sequence[T] | T) -> T | Sequence[T]:
         >>> one_or_list([1])
         1
     """
-    if isinstance(value, list) and len(value) == 1:
-        return value[0]
-    return value
+    return value[0] if isinstance(value, list) and len(value) == 1 else value
 
 
 def ensure_list(value: T) -> T | list[T]:
@@ -83,10 +85,7 @@ def ensure_list(value: T) -> T | list[T]:
         >>> ensure_list([123, 456])
         [123, 456]
     """
-    if isinstance(value, list):
-        return value
-    else:
-        return [value]
+    return value if isinstance(value, list) else [value]
 
 
 def quote_str(value: str | T) -> str | T:
@@ -118,3 +117,95 @@ def format_fq_field(field: tuple[str, Any]) -> str:
     key, value = field
     value = one_or_list(value)
     return f"{key}:{value if key in non_quoted_fields else quote_str(value)}"
+
+
+def print_loggers(verbose: bool = True) -> None:  # pragma: no cover -- not used yet
+    """Print out all initialized loggers.
+
+    This is helpful for you to visualize
+    exactly how loggers have been set up in your project (and your dependencies). By
+    default, all loggers will be printed. If you want to filter out logging
+    placeholders, loggers with NullHandlers, and loggers that only propagate to parent,
+    set the verbose parameter to False.
+
+    Shamelessly pilfered from https://github.com/kolonialno/troncos/blob/f7e27727f43be57af41a4531afc46a889c6d45f0/troncos/contrib/logging/tools/__init__.py#L4
+
+    This flowchart helps to debug logging issues:
+    https://docs.python.org/3/howto/logging.html#logging-flow
+
+    The output from this function will look something like this:
+
+        Loggers:
+        [ root                 ] logs.RootLogger LEVEL:0 PROPAGATE:True
+          └ HANDLER logs.StreamHandler  LVL  20
+            └ FILTER velodrome.observability.logs.TraceIdFilter
+            └ FORMATTER velodrome.observability.logs.LogfmtFormatter
+        [ uvicorn.access       ] logs.Logger LEVEL:20 PROPAGATE:False
+        [ uvicorn.error        ] logs.Logger LEVEL:20 PROPAGATE:True
+          └ FILTER velodrome.utils.obs._UvicornErrorFilter
+        [ velodrome.access     ] logs.Logger LEVEL:20 PROPAGATE:True
+          └ FILTER velodrome.observability.logs.HttpPathFilter
+    """
+
+    def internal(
+        curr: tuple[str, logging.Logger],
+        rest: list[tuple[str, logging.Logger]],
+    ) -> None:
+        i_name, i_log = curr
+
+        print(
+            f"[ {i_name.ljust(20)[:20]} ]"
+            f" {str(i_log.__class__)[8:-2]}"
+            f" LEVEL: {i_log.level if hasattr(i_log, 'level') else '?'}"
+            f" PROPAGATE: {i_log.propagate if hasattr(i_log, 'propagate') else '?'}"
+        )
+
+        if hasattr(i_log, "filters"):
+            for f in i_log.filters:
+                print("  └ FILTER", str(f.__class__)[8:-2])
+
+        if hasattr(i_log, "handlers"):
+            for h in i_log.handlers:
+                print(
+                    "  └ HANDLER",
+                    str(h.__class__)[8:-2],
+                    " LEVEL:",
+                    h.level if hasattr(h, "level") else "?",
+                )
+                if hasattr(h, "filters"):
+                    for f in h.filters:
+                        print("    └ FILTER", str(f.__class__)[8:-2])
+                if hasattr(h, "formatter"):
+                    print("    └ FORMATTER", str(h.formatter.__class__)[8:-2])
+
+        if rest:
+            curr = rest[0]
+            rest = rest[1:]
+            internal(curr, rest)
+
+    all_but_root = []
+    for name, logger in logging.Logger.manager.loggerDict.items():
+        if not verbose:
+            # Ignore placeholders
+            if isinstance(logger, logging.PlaceHolder):
+                continue
+
+            # If it is a logger that does nothing but propagate to the parent, ignore
+            if len(logger.filters) == 0 and len(logger.handlers) == 0 and logger.propagate:
+                continue
+
+            # If this logger only has the Null handler
+            if (
+                len(logger.filters) == 0
+                and len(logger.handlers) == 1
+                and isinstance(logger.handlers[0], logging.NullHandler)
+            ):
+                continue
+
+        all_but_root.append((name, logger))
+
+    all_but_root.sort()
+
+    print("Loggers:")
+    internal(("root", logging.getLogger()), all_but_root)  # type: ignore[arg-type]
+    print("")

@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from starlette.routing import Mount
 
 from esg_fastapi.observability.main import observe
@@ -10,20 +11,20 @@ def app_factory() -> FastAPI:
         summary="An adapter service to translate and execute ESGSearch queries on a Globus Search Index.",
         description="# Long form CommonMark content\n---\nTODO: source this from the same place as the python package description?",
     )
-    # Temporarily disable auto discovery while fixing circular imports
-    # for version in discovered:
-    #     api.mount("/" + version.app.version, version.app)
 
-    from .versions.v1.routes import app_factory
+    FastAPIInstrumentor.instrument_app(app=api)
 
-    app = app_factory()
-    api.mount("/" + app.version, app)
-    # FastAPIInstrumentor.instrument_app(app)
+    from .versions.v1.routes import app_factory as v1_app_factory
+
+    versions = [v1_app_factory]
+    for app_factory in versions:
+        app = app_factory()
+        api.mount(f"/{app.version}", app)
 
     for route in api.routes:
-        if isinstance(route, Mount):
+        if isinstance(route, Mount) and isinstance(route.app, FastAPI):
             api.router.include_router(route.app.router)
+            api.router.tags.extend(route.app.router.tags)
 
     observe(api)
-    # FastAPIInstrumentor.instrument_app(api)
     return api

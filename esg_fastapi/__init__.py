@@ -12,3 +12,7 @@ The main API also includes an observability endpoint at the "/observability" sub
 from .configuration import settings
 
 __all__ = ["settings"]
+
+from .utils import print_loggers
+
+print_loggers()
