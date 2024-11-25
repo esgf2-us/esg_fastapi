@@ -57,9 +57,6 @@ SolrDoc = dict[str, Any]
 SupportedAsSolrDocs = SolrDoc | Sequence[GlobusMetaResult]
 """Represents types convertable to a list of GlobusMetaResult objects."""
 
-FieldDefinitions = Mapping[str, tuple[type, FieldInfo] | Annotated]
-"""Types accepted by the `fielddefinitions` arg of `pydantic.create_model`."""
-
 
 class SemVer(str):
     """Represents a semantic version string."""
