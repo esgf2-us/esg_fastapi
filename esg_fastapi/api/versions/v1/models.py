@@ -464,8 +464,6 @@ class GlobusSearchQuery(BaseModel):
     """The maximum number of results to return."""
     offset: int
     """The number of results to skip."""
-    result_format_version: Literal["2019-08-27", "2017-09-01"] = "2019-08-27"
-    """The version of the result format."""
 
     filters: SerializeAsAny[SupportedAsFilters] | None = None
     """A list of filters to apply to the query.

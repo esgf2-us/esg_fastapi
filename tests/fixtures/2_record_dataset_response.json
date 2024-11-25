@@ -5,7 +5,6 @@
     "advanced": true,
     "limit": 2,
     "offset": 0,
-    "result_format_version": "2019-08-27",
     "filters": [
       {
         "type": "match_any",
