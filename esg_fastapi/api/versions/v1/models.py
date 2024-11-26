@@ -143,7 +143,7 @@ class ESGSearchQuery(BaseModel):
     """Grid label of the dataset."""
     grid_resolution: MultiValued[str] | None = None
     """Grid resolution of the dataset."""
-    height_units: Annotated[MultiValued[str], Query(alias="height-units")] | None = None
+    height_units: MultiValued[str] | None = Query(alias="height-units", default=None)
     """Height units of the dataset."""
     index_node: MultiValued[str] | None = None
     """Index node of the dataset."""

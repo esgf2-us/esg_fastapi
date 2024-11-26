@@ -1,10 +1,9 @@
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Annotated, Any, Callable, ForwardRef, Mapping
+from typing import TYPE_CHECKING, Annotated, Any, Callable, ForwardRef
 
 from annotated_types import T
 from fastapi import Query
 from pydantic import AfterValidator, BeforeValidator, GetJsonSchemaHandler, PlainSerializer
-from pydantic.fields import FieldInfo
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema
 from pydantic_core.core_schema import (
@@ -34,7 +33,6 @@ Stringified = Annotated[T, AfterValidator(lambda x: str(x))]
 
 MultiValued = Annotated[list[T], BeforeValidator(ensure_list), Query()]
 """Solr MultiValued Field of the parameterized type."""
-
 
 LowerCased = Annotated[T, PlainSerializer(lambda x: x.lower())]
 """Lower-case string representation of the parameterized type."""
