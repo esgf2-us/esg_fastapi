@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: code.ornl.gov:4567/esgf/mirrors/esg_fastapi/esgf-esg-fastapi
+  repository: savannah.ornl.gov/esgf/esgf-esg-fastapi
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
   tag: ci-setup
