@@ -10,8 +10,6 @@ from starlette.requests import Request
 
 from esg_fastapi import settings
 from esg_fastapi.observability.metrics import FACET_LABELS, GLOBAL_LABELS, track_exceptions
-
-
 @pytest.mark.parametrize(
     ("path", "exc_type",      "handlers",           "expectation"), [
     ("/foo",  Exception, {Exception: AsyncMock()}, does_not_raise(),),

@@ -187,4 +187,4 @@ if missing_fields:
         dump_resolve_reference_action=data_model_types.dump_resolve_reference_action,
     )
 
-    print(parser.parse())
+    print(parser.parse())  # noqa: T201

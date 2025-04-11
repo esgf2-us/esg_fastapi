@@ -36,10 +36,10 @@ def test_Gunicorn_bind_from_host_and_port() -> None:
 
 
 def test_Gunicorn_no_bind_host_and_port_required() -> None:
-    """If `bind` is empty, `host` and `port` are required."""
+    """If either 'bind' or both 'host' and 'port' are empty, an error is raised."""
     from esg_fastapi.configuration.gunicorn import GunicornSettings
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Please provide a value for either 'bind' or both 'host' and 'port'."):
         GunicornSettings(host=None, port=None)
 
 

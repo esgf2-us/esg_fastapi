@@ -1,12 +1,12 @@
+"""Define models to make gunicorn configurable along with other pydantic settings."""
+
 from functools import partial
 from multiprocessing import cpu_count
 from pathlib import Path
 from tempfile import mkdtemp
-from typing import Annotated, Callable, Optional
+from typing import Annotated, Optional
 
 from annotated_types import T
-from gunicorn.arbiter import Arbiter
-from gunicorn.workers.base import Worker
 from pydantic import BaseModel, Field, IPvAnyAddress, ValidationInfo, field_validator
 
 from esg_fastapi.api.versions.v1.models import Stringified
@@ -52,7 +52,7 @@ ValidatedDefault = Annotated[T, Field(validate_default=True)]
 class GunicornSettings(BaseModel):
     """Settings for the Gunicorn web server."""
 
-    # Fields used for calculation of other Guincorn settings,
+    # Fields used for calculation of other Gunicorn settings,
     # but not actually passed directly to Gunicorn
     workers_per_core: int = 1
     web_concurrency: int = 0

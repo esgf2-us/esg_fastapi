@@ -23,7 +23,6 @@ def test_fixture_generation(
     json_example: SearchParityFixture, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Ensure that generated fixture format is the same given the same query responses."""
-
     monkeypatch.setenv("OTEL_SERVICE_NAME", "foo")
     from fastapi.testclient import TestClient
 
