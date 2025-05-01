@@ -14,4 +14,4 @@ RUN export PIP_EXTRA_INDEX_URL="$PIP_EXTRA_INDEX_URL" && \
 
 ENV PROMETHEUS_MULTIPROC_DIR /dev/shm
 
-CMD ["python", "-m", "esg_fastapi"]
+CMD ["uvicorn", "esg_fastapi.wsgi:app", "--host", "0.0.0.0", "--port", "1337"]
