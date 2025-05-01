@@ -90,7 +90,6 @@ jobs:
           helm install test oci://ghcr.io/esgf2-us/esg-fastapi \
             --version=${{ needs.helm.outputs.generated-semver }} \
             --set image.tag=pr-${{ github.event.pull_request.number }} \
-            -f helm/ci/sync_dry_run.yaml \
             --debug \
             --wait
 
