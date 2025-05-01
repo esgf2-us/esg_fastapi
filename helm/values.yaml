@@ -47,6 +47,7 @@ ingress:
   enabled: true
   host:
   className: ""
+  labels:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
 
