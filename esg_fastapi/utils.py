@@ -1,14 +1,11 @@
 """Utilities that don't fit well in other modules."""
 
-import asyncio
 import logging
 import time
 from collections.abc import Sequence
-from functools import wraps
 from types import TracebackType
 from typing import Any, Optional, Self, Type
 
-import pyroscope
 from annotated_types import T
 
 

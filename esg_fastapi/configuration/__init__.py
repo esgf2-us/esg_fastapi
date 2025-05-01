@@ -11,7 +11,6 @@ from pydantic_loggings.base import Logging as LoggingConfig
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from esg_fastapi.api.versions.v1.types import SemVer
-from esg_fastapi.configuration.gunicorn import GunicornSettings
 from esg_fastapi.configuration.logging import ESGFLogging
 from esg_fastapi.configuration.opentelemetry import OTELSettings
 from esg_fastapi.configuration.profiling import Pyroscope
@@ -25,7 +24,6 @@ class UnifiedSettingsModel(BaseSettings):
     app_version: SemVer = Field(default=version("esg_fastapi"))
 
     pyroscope: Pyroscope = Pyroscope(application_name=app_id)
-    gunicorn: GunicornSettings = Field(default_factory=GunicornSettings)
     logging: LoggingConfig = ESGFLogging(service_name=app_id)
     otel: OTELSettings = OTELSettings(otel_service_name=app_id)
 

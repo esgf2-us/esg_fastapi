@@ -67,7 +67,7 @@ class OTELSettings(GeneratedOTELBase()):
     otel_python_log_level: Exportable[str] = "info"
     otel_python_logging_auto_instrumentation_enabled: Exportable[str] = "true"
     otel_python_log_correlation: Exportable[str] = "true"
-    otel_exporter_otlp_traces_endpoint: Exportable[AnyUrl] = Url("http://localhost:4317")
+    # otel_exporter_otlp_traces_endpoint: Exportable[AnyUrl] = Url("http://localhost:4317")
 
     # TODO: This doesn't really fit here, but for now, stick it with the other Exportables
     prometheus_multiproc_dir: Exportable[str] = Field(default_factory=partial(mkdtemp, prefix="/dev/shm/"))  # noqa: S108 -- `mkdtemp` is secure, we need to ensure a memory-backed tmp or the worker threads will hang waiting on disk i/o
