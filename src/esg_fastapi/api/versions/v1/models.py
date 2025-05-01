@@ -335,6 +335,8 @@ class GlobusFacet(BaseModel):
     """The type of facet."""
     field_name: str
     """The name of the field to facet on."""
+    size: int = 2_000_000_000
+    """The number of distinct facet values (buckets) to return."""
 
 
 def is_sequence_of(value: object, value_type: type[T]) -> TypeGuard[Sequence[T]]:
