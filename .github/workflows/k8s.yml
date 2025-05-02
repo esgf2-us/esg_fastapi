@@ -84,10 +84,7 @@ jobs:
       - name: Start minikube
         uses: medyagh/setup-minikube@latest
         with:
-          addons: csi-hostpath-driver, default-storageclass, ingress, ingress-dns
-      - name: Set up DNS
-        run: |
-          echo $(minikube ip) esg-fastapi.test | sudo tee -a /etc/hosts
+          addons: csi-hostpath-driver,default-storageclass,ingress,ingress-dns
       - name: Set up Helm
         uses: azure/setup-helm@v4.2.0
       - name: Install Helm Chart
@@ -100,4 +97,4 @@ jobs:
             --wait
       - name: Test API
         run: |
-          curl -s "http://esg-fastapi.test/?limit=0&project=CMIP6&facets=variable_id"
+          curl -s -H "esg-fastapi.test" "http://$(minikube ip)/?limit=0&project=CMIP6&facets=variable_id"
