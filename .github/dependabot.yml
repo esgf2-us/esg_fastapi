@@ -1,0 +1,27 @@
+version: 2
+updates:
+
+- package-ecosystem: docker
+  directory: "/"
+  schedule:
+    interval: "daily"
+
+- package-ecosystem: docker-compose
+  directory: "/docker-compose"
+  schedule:
+    interval: "daily"
+
+- package-ecosystem: helm
+  directory: "/helm"
+  schedule:
+    interval: "daily"
+
+- package-ecosystem: github-actions
+  directory: "/.github/workflows"
+  schedule:
+    interval: "daily"
+
+- package-ecosystem: pip
+  directory: "/"
+  schedule:
+    interval: "daily"
