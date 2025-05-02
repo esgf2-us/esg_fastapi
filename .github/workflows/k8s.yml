@@ -98,5 +98,6 @@ jobs:
             --set ingress.host=esg-fastapi.test \
             --debug \
             --wait
-
+      - name: Test API
+        run: |
           curl -s "http://esg-fastapi.test/?limit=0&project=CMIP6&facets=variable_id"
