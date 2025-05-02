@@ -93,8 +93,12 @@ jobs:
             --version=${{ needs.helm.outputs.generated-semver }} \
             --set image.tag=pr-${{ github.event.pull_request.number }} \
             --set ingress.host=esg-fastapi.test \
+            --set service.type=NodePort \
             --debug \
             --wait
       - name: Test API
         run: |
-          curl -s -H "esg-fastapi.test" "http://$(minikube ip)/?limit=0&project=CMIP6&facets=variable_id"
+          kubectl get pods --all-namespaces
+          SVC_URL=$(minikube service test-esg-fastapi --url)
+          echo "Service URL: $SVC_URL"
+          curl -s "${SVC_URL}/?limit=0&project=CMIP6&facets=variable_id"
