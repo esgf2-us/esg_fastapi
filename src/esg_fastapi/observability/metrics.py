@@ -15,7 +15,7 @@ from starlette.responses import Response
 from esg_fastapi import settings
 from esg_fastapi.api.versions.v1.models import ESGSearchQuery
 
-FACET_LABELS = ESGSearchQuery()._queriable_fields
+FACET_LABELS = ESGSearchQuery._queriable_fields()
 GLOBAL_LABELS: list[str] = ["method", "path", "app_name", *FACET_LABELS]
 
 ESG_FASTAPI = Info("fastapi_app_info", "FastAPI application information.").info(

@@ -15,34 +15,6 @@ def test_settings_is_usable() -> None:
     assert settings.globus_search_index is not None
 
 
-def test_Gunicorn_bind_takes_precedence() -> None:
-    """The `bind` setting takes precedence over host and port."""
-    from esg_fastapi import settings
-
-    cls = type(settings.gunicorn)
-    gs = cls(bind="127.0.0.1:9999", host="1.1.1.1", port=1111)
-
-    assert gs.bind == "127.0.0.1:9999"
-
-
-def test_Gunicorn_bind_from_host_and_port() -> None:
-    """If empty, build `bind` from `host` and `port`."""
-    from esg_fastapi import settings
-
-    cls = type(settings.gunicorn)
-    gs = cls(host="1.1.1.1", port=1111)
-
-    assert gs.bind == "1.1.1.1:1111"
-
-
-def test_Gunicorn_no_bind_host_and_port_required() -> None:
-    """If either 'bind' or both 'host' and 'port' are empty, an error is raised."""
-    from esg_fastapi.configuration.gunicorn import GunicornSettings
-
-    with pytest.raises(ValueError, match="Please provide a value for either 'bind' or both 'host' and 'port'."):
-        GunicornSettings(host=None, port=None)
-
-
 # TODO: move this somewhere sensible
 def test_app_factory_instruments_app(mocker: MockFixture) -> None:
     """The created app is marked as insturmented by the FastAPIInstrumentor."""

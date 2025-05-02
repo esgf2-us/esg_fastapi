@@ -1,0 +1,39 @@
+name: Pytest and Coverage
+on:
+  pull_request:
+
+# https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
+permissions:
+  checks: write
+  pull-requests: write
+
+jobs:
+  build:
+    # TODO: can we run this inside the built container to avoid installing twice?
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Python
+        uses: actions/setup-python@v4
+
+      - name: Install poetry
+        uses: abatilo/actions-poetry@v4
+
+      - uses: actions/cache@v3
+        name: Define a cache for the virtual environment based on the dependencies lock file
+        with:
+          path: ./.venv
+          key: venv-${{ hashFiles('poetry.lock') }}
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Run tests
+        run: |
+          poetry run pytest --junitxml=pytest.xml | tee pytest-coverage.txt
+
+      - name: Pytest coverage comment
+        uses: MishaKav/pytest-coverage-comment@main
+        with:
+          junitxml-path: ./pytest.xml
