@@ -5,3 +5,4 @@ __pycache__
 .coverage
 .reports/
 coverage.lcov
+pytest.xml

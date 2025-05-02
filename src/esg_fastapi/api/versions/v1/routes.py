@@ -81,6 +81,7 @@ async def search_globus(q: ESGSearchQuery = TrackedESGSearchQuery) -> ESGSearchR
     """
     logger.info("Starting query")
     globus_query = GlobusSearchQuery.from_esg_search_query(q)
+    logger.debug(globus_query.model_dump(exclude_none=True))
     with Timer() as t:
         # TODO: OTEL will time this anyway -- can we get the time from it?
         tracer = trace.get_tracer("esg_fastapi")

@@ -293,10 +293,10 @@ class ESGSearchQuery(BaseModel):
     facets: Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"\w+(,\w+)*?")] | None = None
     """A comma-separated list of field names to facet on."""
 
-    @property
-    def _queriable_fields(self: Self) -> set[str]:
+    @classmethod
+    def _queriable_fields(cls) -> set[str]:
         """All fields that are queriable in Solr."""
-        return {field for field in self.model_fields if field not in NON_QUERIABLE_FIELDS}
+        return {field for field in cls.model_fields if field not in NON_QUERIABLE_FIELDS}
 
 
 class GlobusFilter(BaseModel):
@@ -335,7 +335,7 @@ class GlobusFacet(BaseModel):
     """The type of facet."""
     field_name: str
     """The name of the field to facet on."""
-    size: int = 2_000_000_000
+    size: int = 2_000_000_000  # Globus Search has an undocumented default of 10, no way to say "all". GS dies if too high, somewhere between 2_000_000_000 and 5_000_000_000
     """The number of distinct facet values (buckets) to return."""
 
 
@@ -454,7 +454,7 @@ class GlobusSearchQuery(BaseModel):
             advanced=True,
             limit=query.limit,
             offset=query.offset,
-            filters=query.model_dump(exclude_none=True, include=query._queriable_fields),
+            filters=query.model_dump(exclude_none=True, include=query._queriable_fields()),
             facets=query.facets,
         )
 
@@ -660,7 +660,7 @@ class ESGSearchResultParams(BaseModel):
         if is_sequence_of(value, str):
             return one_or_list(value)
         elif isinstance(value, ESGSearchQuery):
-            fq_fields = value.model_dump(exclude_none=True, include=value._queriable_fields)
+            fq_fields = value.model_dump(exclude_none=True, include=value._queriable_fields())
             return one_or_list([format_fq_field(field) for field in fq_fields.items()])
         else:
             raise ValueError(  # pragma: no cover TODO: pytest.raises() masks this line so coverage doesn't think it was executed
