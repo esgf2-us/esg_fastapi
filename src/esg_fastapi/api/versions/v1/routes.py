@@ -61,7 +61,7 @@ TrackedESGSearchQuery: ESGSearchQuery = Depends(query_instrumentor)
 
 
 @router.get("/")
-async def search_globus(q: ESGSearchQuery = TrackedESGSearchQuery) -> ESGSearchResponse:
+def search_globus(q: ESGSearchQuery = TrackedESGSearchQuery) -> ESGSearchResponse:
     """This function performs a search using the Globus API based on the provided ESG search query.
 
     Parameters:
