@@ -458,6 +458,8 @@ class GlobusSearchQuery(BaseModel):
             facets=query.facets,
         )
 
+    version_: Literal["query#1.0.0"] = Field(default="query#1.0.0", alias="@version")
+    """The version of the query format."""
     q: str | None = None
     """The search query."""
     advanced: bool = True
