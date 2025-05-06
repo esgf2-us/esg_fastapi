@@ -4,6 +4,10 @@
 
 replicaCount: 1
 
+env:
+  # GLOBUS_CLIENT_ID: ""
+  # GLOBUS_CLIENT_SECRET: "{{ .Values.ingress.host }}"
+
 image:
   repository: ghcr.io/esgf2-us/esgf-bridge
   pullPolicy: Always

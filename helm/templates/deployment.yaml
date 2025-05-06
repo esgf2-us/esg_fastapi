@@ -41,6 +41,10 @@ spec:
         env:
         - name: UVICORN_PORT
           value: {{ .Values.service.port | quote }}
+        {{- range $name, $value := .Values.env }}
+        - name: {{ $name | upper | quote }}
+          value: {{ tpl $value $ | quote }}
+        {{- end }}
         ports:
         - name: http
           containerPort: {{ .Values.service.port }}
