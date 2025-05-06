@@ -372,6 +372,10 @@ class GlobusSearchQuery(BaseModel):
     TODO: boosts and sorts
     """
 
+    model_config = ConfigDict(
+        serialize_by_alias=True,  # serialize fields by alias (e.g. "_version" -> "@version")
+    )
+
     @field_validator("facets", mode="before")
     @staticmethod
     def convert_esg_seach_facets_field(value: SupportedAsFacets | None) -> Sequence[GlobusFacet] | None:

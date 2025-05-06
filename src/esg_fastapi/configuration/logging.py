@@ -48,7 +48,6 @@ class ESGFLogging(LoggingConfig):
         "stderr": Handler.model_validate({"formatter": "otel", "stream": "ext://sys.stderr"}),
     }
     loggers: OptionalModelDict[LoggerModel] = {
-        "gunicorn": {"handlers": ["stdout"]},
         "uvicorn": {"handlers": ["stdout"]},
     }
     root: OptionalModel[LoggerModel] = LoggerModel.model_validate(
