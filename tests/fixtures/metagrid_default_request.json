@@ -1,6 +1,7 @@
 {
   "request": "project=CMIP6&query=%2A&format=application%2Fsolr%2Bjson&type=Dataset&offset=0&limit=10&latest=true&facets=activity_id%2C+data_node%2C+source_id%2C+institution_id%2C+source_type%2C+experiment_id%2C+sub_experiment_id%2C+nominal_resolution%2C+variant_label%2C+grid_label%2C+table_id%2C+frequency%2C+realm%2C+variable_id%2C+cf_standard_name",
   "globus_query": {
+    "@version": "query#1.0.0",
     "q": null,
     "advanced": true,
     "limit": 10,
