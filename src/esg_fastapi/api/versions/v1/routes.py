@@ -1,5 +1,6 @@
 """Starting point/base for the ESG FastAPI service and it's versions and components."""
 
+import httpx
 import logging
 from contextvars import ContextVar
 from typing import Any, Generator
@@ -60,8 +61,19 @@ def query_instrumentor(query: ESGSearchQuery = Depends()) -> Generator[ESGSearch
 TrackedESGSearchQuery: ESGSearchQuery = Depends(query_instrumentor)
 
 
+async def send_query(globus_query):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"https://search.api.globus.org/v1/index/{settings.globus_search_index}/search",
+            json=globus_query,
+            headers={"content-type": "application/json"},
+            timeout=10.0
+        )
+    return response.json()
+
+
 @router.get("/")
-def search_globus(q: ESGSearchQuery = TrackedESGSearchQuery) -> ESGSearchResponse:
+async def search_globus(q: ESGSearchQuery = TrackedESGSearchQuery) -> ESGSearchResponse:
     """This function performs a search using the Globus API based on the provided ESG search query.
 
     Parameters:
@@ -81,38 +93,42 @@ def search_globus(q: ESGSearchQuery = TrackedESGSearchQuery) -> ESGSearchRespons
     """
     logger.info("Starting query")
     globus_query = GlobusSearchQuery.from_esg_search_query(q)
-    logger.debug(globus_query.model_dump(exclude_none=True))
+    globus_query_model = globus_query.model_dump(exclude_none=True)
+    globus_responses = []
+
+    globus_queries = [
+        {**globus_query_model, "facets": []},
+        {**globus_query_model, "limit": 0}
+    ]
+
+    logger.debug(globus_query_model)
     with Timer() as t:
         # TODO: OTEL will time this anyway -- can we get the time from it?
         tracer = trace.get_tracer("esg_fastapi")
         with tracer.start_as_current_span("globus_search"):
-            response = (
-                SearchClient()
-                .post_search(settings.globus_search_index, globus_query.model_dump(exclude_none=True))
-                .data
-            )
-        globus_response = GlobusSearchResult.model_validate(response)
+            for globus_query in globus_queries:
+                response = await send_query(globus_query)
+                globus_responses.append(GlobusSearchResult.model_validate(response))
 
-    return ESGSearchResponse.model_validate(
-        {
-            "responseHeader": {
-                "QTime": t.time,
-                "params": {
-                    "q": q.query,
-                    "start": q.offset,
-                    "rows": q.limit,
-                    "fq": q,
-                    "shards": f"esgf-data-node-solr-query:8983/solr/{q.type.lower()}s",
-                },
+    response_object = {
+        "responseHeader": {
+            "QTime": t.time,
+            "params": {
+                "q": q.query,
+                "start": q.offset,
+                "rows": q.limit,
+                "fq": q,
+                "shards": f"esgf-data-node-solr-query:8983/solr/{q.type.lower()}s",
             },
-            "response": {
-                "numFound": globus_response.total,
-                "start": globus_response.offset,
-                "docs": globus_response.gmeta,
-            },
-            "facet_counts": globus_response.facet_results,
-        }
-    )
+        },
+        "response": {
+            "numFound": globus_responses[0].total,
+            "start": globus_responses[0].offset,
+            "docs": globus_responses[0].gmeta,
+        },
+        "facet_counts": globus_responses[1].facet_results,
+    }
+    return ESGSearchResponse.model_validate(response_object)
 
 
 class SearchParityFixture(TypedDict):
