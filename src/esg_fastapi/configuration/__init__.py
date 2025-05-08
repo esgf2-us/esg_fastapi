@@ -15,6 +15,8 @@ from esg_fastapi.configuration.logging import ESGFLogging
 from esg_fastapi.configuration.opentelemetry import OTELSettings
 from esg_fastapi.configuration.profiling import Pyroscope
 
+DEFAULT_UUID = "<GlobusSearchUUID>"
+
 
 class UnifiedSettingsModel(BaseSettings):
     """An importable Pydantic Settings object."""
@@ -30,7 +32,7 @@ class UnifiedSettingsModel(BaseSettings):
     # Globus functions are typed to accept UUIDs so use the coercion for validation
     # ref: https://github.com/globus/globus-sdk-python/blob/b6fa2edc7e81201494d150585078a99d3926dfc7/src/globus_sdk/_types.py#L18
     globus_search_index: UUID4 = Field(
-        default=UUID("ea4595f4-7b71-4da7-a1f0-e3f5d8f7f062", version=4),
+        default=UUID(DEFAULT_UUID, version=4),
         title="Globus Search Index ID",
         description="The ID of the Globus Search Index queries will be submitted to. The default is the ORNL Globus Search Index.",
     )
