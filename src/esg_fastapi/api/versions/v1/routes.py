@@ -7,6 +7,7 @@ from typing import Any, Generator
 import httpx
 import pyroscope
 import requests
+from cachetools import TTLCache
 from fastapi import APIRouter, Depends, FastAPI, Request
 from globus_sdk import SearchClient
 from opentelemetry import trace
@@ -22,6 +23,8 @@ from .models import (
     GlobusSearchQuery,
     GlobusSearchResult,
 )
+
+cache = TTLCache(maxsize=128, ttl=10)
 
 logger = logging.getLogger()
 
@@ -121,9 +124,13 @@ async def search_globus(q: ESGSearchQuery = TrackedESGSearchQuery) -> ESGSearchR
         # TODO: OTEL will time this anyway -- can we get the time from it?
         tracer = trace.get_tracer("esg_fastapi")
         with tracer.start_as_current_span("globus_search"):
-            for globus_query in globus_queries:
-                response = await send_query(globus_query)
-                globus_responses.append(GlobusSearchResult.model_validate(response))
+            try:
+                globus_responses = cache["globus_responses"]
+            except KeyError:
+                for globus_query in globus_queries:
+                    response = await send_query(globus_query)
+                    globus_responses.append(GlobusSearchResult.model_validate(response))
+                cache["globus_responses"] = globus_responses
 
     response_object = {
         "responseHeader": {

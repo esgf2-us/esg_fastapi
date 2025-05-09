@@ -7,6 +7,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
+cachetools = "^5.5.2"
 fastapi = "^0.115.12"
 globus-sdk = "^3.55.0"
 uvicorn = "^0.34.2"
