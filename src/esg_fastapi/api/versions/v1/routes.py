@@ -1,10 +1,10 @@
 """Starting point/base for the ESG FastAPI service and it's versions and components."""
-
-import httpx
 import logging
+import time
 from contextvars import ContextVar
 from typing import Any, Generator
 
+import httpx
 import pyroscope
 import requests
 from fastapi import APIRouter, Depends, FastAPI, Request
@@ -62,14 +62,29 @@ TrackedESGSearchQuery: ESGSearchQuery = Depends(query_instrumentor)
 
 
 async def send_query(globus_query):
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"https://search.api.globus.org/v1/index/{settings.globus_search_index}/search",
-            json=globus_query,
-            headers={"content-type": "application/json"},
-            timeout=10.0
-        )
-    return response.json()
+    client = httpx.AsyncClient()
+    max_retries = 5
+    for i in range(max_retries):
+        try:
+            response = await client.post(
+                f"https://search.api.globus.org/v1/index/{settings.globus_search_index}/search",
+                json=globus_query,
+                headers={"content-type": "application/json"},
+                timeout=30.0
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429:
+                if i < max_retries - 1:
+                    logger.info("Rate limit hit. Retrying in 5 seconds")
+                    time.sleep(5)
+                else:
+                    raise Exception("Max retries exceeded. Please try your query again") from e
+            else:
+                raise e
+        finally:
+            await client.aclose()
 
 
 @router.get("/")
