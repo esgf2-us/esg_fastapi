@@ -24,7 +24,7 @@ from .models import (
     GlobusSearchResult,
 )
 
-cache = TTLCache(maxsize=128, ttl=10)
+cache = TTLCache(maxsize=128, ttl=60)
 
 logger = logging.getLogger()
 
@@ -124,13 +124,17 @@ async def search_globus(q: ESGSearchQuery = TrackedESGSearchQuery) -> ESGSearchR
         # TODO: OTEL will time this anyway -- can we get the time from it?
         tracer = trace.get_tracer("esg_fastapi")
         with tracer.start_as_current_span("globus_search"):
-            try:
-                globus_responses = cache["globus_responses"]
-            except KeyError:
-                for globus_query in globus_queries:
-                    response = await send_query(globus_query)
-                    globus_responses.append(GlobusSearchResult.model_validate(response))
-                cache["globus_responses"] = globus_responses
+            globus_response = await send_query(globus_queries[0])
+            globus_responses.append(GlobusSearchResult.model_validate(globus_response))
+            if len(globus_query_model.get("facets")) == 15:
+                try:
+                    globus_facets = cache["globus_facets"]
+                except KeyError:
+                    globus_facets = await send_query(globus_queries[1])
+                    cache["globus_facets"] = globus_facets
+            else:
+                globus_facets = await send_query(globus_queries[1])
+            globus_responses.append(GlobusSearchResult.model_validate(globus_facets))
 
     response_object = {
         "responseHeader": {
