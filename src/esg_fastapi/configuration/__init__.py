@@ -15,7 +15,7 @@ from esg_fastapi.configuration.logging import ESGFLogging
 from esg_fastapi.configuration.opentelemetry import OTELSettings
 from esg_fastapi.configuration.profiling import Pyroscope
 
-DEFAULT_UUID = "<GlobusSearchUUID>"
+DEFAULT_UUID = "a8ef4320-9e5a-4793-837b-c45161ca1845"
 
 
 class UnifiedSettingsModel(BaseSettings):
