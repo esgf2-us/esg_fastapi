@@ -1,4 +1,5 @@
 """Starting point/base for the ESG FastAPI service and it's versions and components."""
+import asyncio
 import logging
 import time
 from contextvars import ContextVar
@@ -86,8 +87,7 @@ async def send_query(globus_query):
                     raise Exception("Max retries exceeded. Please try your query again") from e
             else:
                 raise e
-        finally:
-            await client.aclose()
+    await client.aclose()
 
 
 @router.get("/")
@@ -124,16 +124,19 @@ async def search_globus(q: ESGSearchQuery = TrackedESGSearchQuery) -> ESGSearchR
         # TODO: OTEL will time this anyway -- can we get the time from it?
         tracer = trace.get_tracer("esg_fastapi")
         with tracer.start_as_current_span("globus_search"):
-            globus_response = await send_query(globus_queries[0])
+            globus_response_task = asyncio.create_task(send_query(globus_queries[0]))
+            globus_response = await globus_response_task
             globus_responses.append(GlobusSearchResult.model_validate(globus_response))
             if len(globus_query_model.get("facets")) == 15:
                 try:
                     globus_facets = cache["globus_facets"]
                 except KeyError:
-                    globus_facets = await send_query(globus_queries[1])
+                    globus_facets_task = asyncio.create_task(send_query(globus_queries[1]))
+                    globus_facets = await globus_facets_task
                     cache["globus_facets"] = globus_facets
             else:
-                globus_facets = await send_query(globus_queries[1])
+                globus_facets_task = asyncio.create_task(send_query(globus_queries[1]))
+                globus_facets = await globus_facets_task
             globus_responses.append(GlobusSearchResult.model_validate(globus_facets))
 
     response_object = {
