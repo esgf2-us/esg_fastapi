@@ -1,0 +1,72 @@
+{
+  "request": "project=CMIP5%2CTAMIP%2CEUCLIPSE%2CLUCID%2CGeoMIP%2CPMIP3&offset=0&limit=10&type=Dataset&format=application%2Fsolr%2Bjson&query=%2A",
+  "globus_query": {
+    "q": null,
+    "advanced": true,
+    "limit": 10,
+    "offset": 0,
+    "filters": [
+      {
+        "type": "match_any",
+        "field_name": "type",
+        "values": ["Dataset"]
+      },
+      {
+        "type": "match_any",
+        "field_name": "project",
+        "values": ["CMIP5", "TAMIP", "EUCLIPSE", "LUCID", "GeoMIP", "PMIP"]
+      }
+    ],
+    "facets": null
+  },
+  "globus_response": {
+    "gmeta": [],
+    "facet_results": null,
+    "offset": 0,
+    "count": 0,
+    "total": 9130715,
+    "has_next_page": true
+  },
+  "esg_search_response": {
+    "responseHeader": {
+      "status": 0,
+      "QTime": 9,
+      "params": {
+        "df": "text",
+        "q.alt": "*:*",
+        "indent": "true",
+        "echoParams": "all",
+        "fl": "*,score",
+        "start": "0",
+        "fq": [
+          "type:Dataset",
+          "project:\"CMIP5\" || project:\"TAMIP\" || project:\"EUCLIPSE\" || project:\"LUCID\" || project:\"GeoMIP\" || project:\"PMIP3\""
+        ],
+        "rows": "10",
+        "q": "*",
+        "shards": "esgf-data-node-solr-query:8983/solr/datasets",
+        "tie": "0.01",
+        "facet.limit": "-1",
+        "qf": "text",
+        "facet.method": "enum",
+        "facet.mincount": "1",
+        "wt": "json",
+        "facet": "true",
+        "facet.sort": "lex"
+      }
+    },
+    "response": {
+      "numFound": 9130715,
+      "start": 0,
+      "docs": [],
+      "maxScore": null
+    },
+    "facet_counts": {
+      "facet_queries": {},
+      "facet_fields": {},
+      "facet_ranges": {},
+      "facet_intervals": {},
+      "facet_heatmaps": {}
+    }
+  }
+}

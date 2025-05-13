@@ -112,6 +112,10 @@ def format_fq_field(field: tuple[str, Any]) -> str:
     #       tag them with annotations and a computed field like we do with non-queriable fields.
     non_quoted_fields = {"type"}
     key, value = field
+    if isinstance(value, str) and "," in value:
+        # special case comma separated values like:
+        # "CMIP5,TAMIP,EUCLIPSE,LUCID,GeoMIP,PMIP" -> project:"CMIP5" || project:"TAMIP" || project:"EUCLIPSE" || project:"LUCID" || project:"GeoMIP" || project:"PMIP3"
+        return " || ".join([f"{key}:{quote_str(term)}" for term in value.split(",")])
     value = one_or_list(value)
     return f"{key}:{value if key in non_quoted_fields else quote_str(value)}"
 
