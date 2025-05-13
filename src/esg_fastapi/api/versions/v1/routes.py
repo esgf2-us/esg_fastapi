@@ -1,11 +1,10 @@
 """Starting point/base for the ESG FastAPI service and it's versions and components."""
-import asyncio
-import logging
-import time
-from contextvars import ContextVar
-from typing import Any, Generator
 
-import httpx
+import logging
+from collections.abc import Generator
+from contextvars import ContextVar
+from typing import Any
+
 import pyroscope
 import requests
 from cachetools import TTLCache
@@ -65,33 +64,8 @@ def query_instrumentor(query: ESGSearchQuery = Depends()) -> Generator[ESGSearch
 TrackedESGSearchQuery: ESGSearchQuery = Depends(query_instrumentor)
 
 
-async def send_query(globus_query):
-    client = httpx.AsyncClient()
-    max_retries = 5
-    for i in range(max_retries):
-        try:
-            response = await client.post(
-                f"https://search.api.globus.org/v1/index/{settings.globus_search_index}/search",
-                json=globus_query,
-                headers={"content-type": "application/json"},
-                timeout=30.0
-            )
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 429:
-                if i < max_retries - 1:
-                    logger.info("Rate limit hit. Retrying in 5 seconds")
-                    time.sleep(5)
-                else:
-                    raise Exception("Max retries exceeded. Please try your query again") from e
-            else:
-                raise e
-    await client.aclose()
-
-
 @router.get("/")
-async def search_globus(q: ESGSearchQuery = TrackedESGSearchQuery) -> ESGSearchResponse:
+def search_globus(q: ESGSearchQuery = TrackedESGSearchQuery) -> ESGSearchResponse:
     """This function performs a search using the Globus API based on the provided ESG search query.
 
     Parameters:
@@ -110,54 +84,55 @@ async def search_globus(q: ESGSearchQuery = TrackedESGSearchQuery) -> ESGSearchR
     - facet_counts: Contains the counts of distinct values for each facet in the search results.
     """
     logger.info("Starting query")
+    cache_key = q.model_dump_json()
+    if cached_response := cache.get(cache_key):
+        logger.debug("Returning response from cache")
+        return ESGSearchResponse.model_validate(cached_response)
+
+    # Globus Search is orders of magnitude faster when searching for rows or facets only vs rows and facets.
+    # Its faster to do two separate queries and combine the results
     globus_query = GlobusSearchQuery.from_esg_search_query(q)
-    globus_query_model = globus_query.model_dump(exclude_none=True)
-    globus_responses = []
+    globus_query_json = globus_query.model_dump(exclude_none=True)
+    globus_rows_query = {**globus_query_json, "facets": []}  # request no facets
+    globus_facets_query = {**globus_query_json, "limit": 0}  # request no rows
 
-    globus_queries = [
-        {**globus_query_model, "facets": []},
-        {**globus_query_model, "limit": 0}
-    ]
-
-    logger.debug(globus_query_model)
+    globus_search_client = SearchClient()
+    logger.debug(globus_query.model_dump(exclude_none=True))
     with Timer() as t:
         # TODO: OTEL will time this anyway -- can we get the time from it?
         tracer = trace.get_tracer("esg_fastapi")
         with tracer.start_as_current_span("globus_search"):
-            globus_response_task = asyncio.create_task(send_query(globus_queries[0]))
-            globus_response = await globus_response_task
-            globus_responses.append(GlobusSearchResult.model_validate(globus_response))
-            if len(globus_query_model.get("facets")) == 15:
-                try:
-                    globus_facets = cache["globus_facets"]
-                except KeyError:
-                    globus_facets_task = asyncio.create_task(send_query(globus_queries[1]))
-                    globus_facets = await globus_facets_task
-                    cache["globus_facets"] = globus_facets
-            else:
-                globus_facets_task = asyncio.create_task(send_query(globus_queries[1]))
-                globus_facets = await globus_facets_task
-            globus_responses.append(GlobusSearchResult.model_validate(globus_facets))
+            with tracer.start_as_current_span("globus_rows_query"):
+                rows_response = GlobusSearchResult.model_validate(
+                    globus_search_client.post_search(settings.globus_search_index, globus_rows_query).data
+                )
+            with tracer.start_as_current_span("globus_rows_query"):
+                facets_response = GlobusSearchResult.model_validate(
+                    globus_search_client.post_search(settings.globus_search_index, globus_facets_query).data
+                )
 
-    response_object = {
-        "responseHeader": {
-            "QTime": t.time,
-            "params": {
-                "q": q.query,
-                "start": q.offset,
-                "rows": q.limit,
-                "fq": q,
-                "shards": f"esgf-data-node-solr-query:8983/solr/{q.type.lower()}s",
+    esg_search_response = {
+            "responseHeader": {
+                "QTime": t.time,
+                "params": {
+                    "q": q.query,
+                    "start": q.offset,
+                    "rows": q.limit,
+                    "fq": q,
+                    "shards": f"esgf-data-node-solr-query:8983/solr/{q.type.lower()}s",
+                },
             },
-        },
-        "response": {
-            "numFound": globus_responses[0].total,
-            "start": globus_responses[0].offset,
-            "docs": globus_responses[0].gmeta,
-        },
-        "facet_counts": globus_responses[1].facet_results,
-    }
-    return ESGSearchResponse.model_validate(response_object)
+            "response": {
+                "numFound": rows_response.total,
+                "start": rows_response.offset,
+                "docs": rows_response.gmeta,
+            },
+            "facet_counts": facets_response.facet_results,
+        }
+
+
+    cache[cache_key] = esg_search_response
+    return ESGSearchResponse.model_validate(esg_search_response)
 
 
 class SearchParityFixture(TypedDict):

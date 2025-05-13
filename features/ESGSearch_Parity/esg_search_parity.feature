@@ -15,3 +15,4 @@ Feature: ESG Search Request/Response parity
             | 1_file_metagrid_response.json  |
             | metagrid_default_request.json  |
             | minimal_response.json          |
+            | multiple_projects.json         |

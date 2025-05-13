@@ -318,7 +318,7 @@ class GlobusMatchFilter(GlobusFilter):
     field_name: str
     """The name of the field to filter on."""
     # TODO: restrict this to only known fields (maybe after refactor to pull fields live from Solr)
-    values: Annotated[list[str | bool], BeforeValidator(ensure_list)]
+    values: Annotated[Sequence[str | bool], BeforeValidator(ensure_list)]
     """The values to filter on."""
 
 
@@ -431,7 +431,17 @@ class GlobusSearchQuery(BaseModel):
         if is_sequence_of(value, GlobusFilter):
             return value
         elif isinstance(value, dict):
-            return [GlobusMatchFilter(field_name=k, values=v) for k, v in value.items()]
+            built_filters = []
+            for field, field_value in value.items():
+                # This is a serialized model
+                if isinstance(field_value, str):
+                    # If it's a comma separated string, split it and pass that as the values, otherwise a single-valued list of strings
+                    # Set the `type` to `match_any` so match result in the csv
+                    built_filters.append(GlobusMatchFilter(type='match_any', field_name=field, values=field_value.split(',')))
+                else:
+                    # If it's not a string, it Should(TM) already be a list, pass it as a `match_all` filter
+                    built_filters.append(GlobusMatchFilter(field_name=field, values=field_value))
+            return built_filters
         else:
             raise ValueError(  # pragma: no cover TODO: pytest.raises() masks this line so coverage doesn't think it was executed
                 f"Expected input convertible to list[GlobusFilter] one of {get_args(SupportedAsFilters)}, got {type(value)}"
