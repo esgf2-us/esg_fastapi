@@ -6,7 +6,7 @@ Its been moved from the main init so that instrumentation can be setup as early 
 from importlib.metadata import version
 from uuid import UUID
 
-from pydantic import UUID4, Field, SecretStr
+from pydantic import UUID4, Field
 from pydantic_loggings.base import Logging as LoggingConfig
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
