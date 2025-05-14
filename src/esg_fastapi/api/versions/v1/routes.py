@@ -67,6 +67,30 @@ def query_instrumentor(query: ESGSearchQuery = Depends()) -> Generator[ESGSearch
 
 TrackedESGSearchQuery: ESGSearchQuery = Depends(query_instrumentor)
 
+_app_var: ContextVar[ClientApp] = ContextVar("_app_var")
+_search_client_var: ContextVar[SearchClient] = ContextVar("_search_client_var")
+
+
+def _get_app() -> ClientApp:
+    app = _app_var.get(None)
+    if app is None:
+        app = ClientApp(
+            "esg_search",
+            client_id=settings.globus_client_id,
+            client_secret=settings.globus_client_secret,
+            config=GlobusAppConfig(token_storage="memory"),
+        )
+        _app_var.set(app)
+    return app
+
+
+def _get_client() -> SearchClient:
+    client = _search_client_var.get(None)
+    if client is None:
+        client = SearchClient(app=_get_app())
+        _search_client_var.set(client)
+    return client
+
 
 def get_authorized_search_client() -> SearchClient:
     """Return a SearchClient authorized to search indicies."""
@@ -111,7 +135,7 @@ def search_globus(q: ESGSearchQuery = TrackedESGSearchQuery) -> ESGSearchRespons
     globus_rows_query = {**globus_query_json, "facets": []}  # request no facets
     globus_facets_query = {**globus_query_json, "limit": 0}  # request no rows
 
-    globus_search_client = get_authorized_search_client()
+    globus_search_client = _get_client()
     logger.debug(globus_query.model_dump(exclude_none=True))
     with Timer() as t:
         # TODO: OTEL will time this anyway -- can we get the time from it?
