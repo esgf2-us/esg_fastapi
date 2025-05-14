@@ -10,9 +10,7 @@ import requests
 from cachetools import TTLCache
 from fastapi import APIRouter, Depends, FastAPI, Request
 from globus_sdk import (
-    AccessTokenAuthorizer,
     ClientApp,
-    ConfidentialAppAuthClient,
     GlobusAppConfig,
     SearchClient
 )
