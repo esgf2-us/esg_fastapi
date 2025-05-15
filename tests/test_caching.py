@@ -21,6 +21,8 @@ def test_search_globus_cache(mocker: MagicMock) -> None:
 
     # Mock settings
     mocker.patch("esg_fastapi.api.versions.v1.routes.settings.globus_search_index", "test_index")
+    mocker.patch("esg_fastapi.api.versions.v1.routes.settings.globus_client_id", "test_id")
+    mocker.patch("esg_fastapi.api.versions.v1.routes.settings.globus_client_secret", "test_secret")
 
     # Create a sample ESGSearchQuery
     esg_query = ESGSearchQuery(query="test_query")
