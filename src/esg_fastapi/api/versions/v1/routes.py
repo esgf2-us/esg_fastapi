@@ -92,17 +92,6 @@ def _get_client() -> SearchClient:
     return client
 
 
-def get_authorized_search_client() -> SearchClient:
-    """Return a SearchClient authorized to search indicies."""
-    app = ClientApp(
-        "esg_search",
-        client_id=settings.globus_client_id,
-        client_secret=settings.globus_client_secret,
-        config=GlobusAppConfig(token_storage="memory"),
-    )
-    return SearchClient(app=app)
-
-
 @router.get("/")
 def search_globus(q: ESGSearchQuery = TrackedESGSearchQuery) -> ESGSearchResponse:
     """This function performs a search using the Globus API based on the provided ESG search query.
