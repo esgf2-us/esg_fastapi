@@ -4,6 +4,7 @@ Its been moved from the main init so that instrumentation can be setup as early 
 """
 
 from importlib.metadata import version
+from typing import Optional
 from uuid import UUID
 
 from pydantic import UUID4, Field
@@ -30,8 +31,8 @@ class UnifiedSettingsModel(BaseSettings):
     otel: OTELSettings = OTELSettings(otel_service_name=app_id)
 
     # Client Credentials
-    globus_client_id: str
-    globus_client_secret: str
+    globus_client_id: Optional[str]
+    globus_client_secret: Optional[str]
 
     # Globus functions are typed to accept UUIDs so use the coercion for validation
     # ref: https://github.com/globus/globus-sdk-python/blob/b6fa2edc7e81201494d150585078a99d3926dfc7/src/globus_sdk/_types.py#L18
