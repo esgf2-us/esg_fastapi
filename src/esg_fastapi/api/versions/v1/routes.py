@@ -72,12 +72,17 @@ _search_client_var: ContextVar[SearchClient] = ContextVar("_search_client_var")
 
 
 def _get_app() -> ClientApp:
+    client_app_settings = {}
+    if all(hasattr(settings, attr)
+           for attr in ["globus_client_id", "globus_client_secret"]):
+        client_app_settings["client_id"] = settings.globus_client_id
+        client_app_settings["client_secret"] = settings.globus_client_secret
+
     app = _app_var.get(None)
     if app is None:
         app = ClientApp(
             "esg_search",
-            client_id=settings.globus_client_id,
-            client_secret=settings.globus_client_secret,
+            **client_app_settings,
             config=GlobusAppConfig(token_storage="memory"),
         )
         _app_var.set(app)
