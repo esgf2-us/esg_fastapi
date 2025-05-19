@@ -5,5 +5,6 @@ __pycache__
 .coverage
 .reports/
 coverage.lcov
+coverage.xml
 pytest.xml
 scripts/k6/
