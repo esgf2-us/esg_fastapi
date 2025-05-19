@@ -1,0 +1,82 @@
+{
+  "request": "project=CMIP6&offset=0&limit=0&type=Dataset&format=application%2Fsolr%2Bjson&query=*&data_node=esgf-data1.llnl.gov,esgf-node.ornl.gov,eagle.alcf.anl.gov",
+  "globus_query": {
+    "q": null,
+    "advanced": true,
+    "limit": 0,
+    "offset": 0,
+    "filters": [
+      {
+        "type": "match_any",
+        "field_name": "type",
+        "values": ["Dataset"]
+      },
+      {
+        "type": "match_any",
+        "field_name": "project",
+        "values": ["CMIP6"]
+      },
+      {
+        "type": "match_any",
+        "field_name": "data_node",
+        "values": [
+          "esgf-data1.llnl.gov",
+          "esgf-node.ornl.gov",
+          "eagle.alcf.anl.gov"
+        ]
+      }
+    ],
+    "facets": null
+  },
+  "globus_response": {
+    "gmeta": [],
+    "facet_results": null,
+    "offset": 0,
+    "count": 0,
+    "total": 5673390,
+    "has_next_page": true
+  },
+  "esg_search_response": {
+    "responseHeader": {
+      "status": 0,
+      "QTime": 175,
+      "params": {
+        "df": "text",
+        "q.alt": "*:*",
+        "indent": "true",
+        "echoParams": "all",
+        "fl": "*,score",
+        "start": "0",
+        "fq": [
+          "type:Dataset",
+          "project:\"CMIP6\"",
+          "data_node:\"esgf-data1.llnl.gov\" || data_node:\"esgf-node.ornl.gov\" || data_node:\"eagle.alcf.anl.gov\""
+        ],
+        "rows": "0",
+        "q": "*",
+        "shards": "esgf-data-node-solr-query:8983/solr/datasets",
+        "tie": "0.01",
+        "facet.limit": "-1",
+        "qf": "text",
+        "facet.method": "enum",
+        "facet.mincount": "1",
+        "wt": "json",
+        "facet": "true",
+        "facet.sort": "lex"
+      }
+    },
+    "response": {
+      "numFound": 5673390,
+      "start": 0,
+      "maxScore": 1.0,
+      "docs": []
+    },
+    "facet_counts": {
+      "facet_queries": {},
+      "facet_fields": {},
+      "facet_ranges": {},
+      "facet_intervals": {},
+      "facet_heatmaps": {}
+    }
+  }
+}

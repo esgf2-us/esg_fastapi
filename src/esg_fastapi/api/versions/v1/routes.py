@@ -112,24 +112,23 @@ def search_globus(q: ESGSearchQuery = TrackedESGSearchQuery) -> ESGSearchRespons
                 )
 
     esg_search_response = {
-            "responseHeader": {
-                "QTime": t.time,
-                "params": {
-                    "q": q.query,
-                    "start": q.offset,
-                    "rows": q.limit,
-                    "fq": q,
-                    "shards": f"esgf-data-node-solr-query:8983/solr/{q.type.lower()}s",
-                },
+        "responseHeader": {
+            "QTime": t.time,
+            "params": {
+                "q": q.query,
+                "start": q.offset,
+                "rows": q.limit,
+                "fq": q,
+                "shards": f"esgf-data-node-solr-query:8983/solr/{q.type.lower()}s",
             },
-            "response": {
-                "numFound": rows_response.total,
-                "start": rows_response.offset,
-                "docs": rows_response.gmeta,
-            },
-            "facet_counts": facets_response.facet_results,
-        }
-
+        },
+        "response": {
+            "numFound": rows_response.total,
+            "start": rows_response.offset,
+            "docs": rows_response.gmeta,
+        },
+        "facet_counts": facets_response.facet_results,
+    }
 
     cache[cache_key] = esg_search_response
     return ESGSearchResponse.model_validate(esg_search_response)
