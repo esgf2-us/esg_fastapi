@@ -4,7 +4,7 @@ import logging
 import time
 from collections.abc import Sequence
 from types import TracebackType
-from typing import Any, Optional, Self, Type
+from typing import Any, Optional, Self
 
 from annotated_types import T
 
@@ -31,7 +31,7 @@ class Timer:
 
     def __exit__(
         self: Self,
-        ex_typ: Optional[Type[BaseException]],
+        ex_typ: Optional[type[BaseException]],
         ex_val: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> None:
@@ -71,7 +71,7 @@ def ensure_list(value: T) -> T | list[T]:
         value (T): The value to be ensured as a list.
 
     Returns:
-        list: Either the original list passed in, or the passed value wrapped in a list.
+        list: Either the original list passed in, or the passed value wrapped in a list. Comma separated strings will be split on "," and returned.
 
     Raises:
         TypeError: If the passed value is not a list and cannot be converted to one.
@@ -81,7 +81,11 @@ def ensure_list(value: T) -> T | list[T]:
         [123]
         >>> ensure_list([123, 456])
         [123, 456]
+        >>> ensure_list("foo,bar,baz")
+        ["foo", "bar", "baz"]
     """
+    if isinstance(value, str):
+        return value.split(",")
     return value if isinstance(value, list) else [value]
 
 
@@ -112,12 +116,15 @@ def format_fq_field(field: tuple[str, Any]) -> str:
     #       tag them with annotations and a computed field like we do with non-queriable fields.
     non_quoted_fields = {"type"}
     key, value = field
-    if isinstance(value, str) and "," in value:
-        # special case comma separated values like:
-        # "CMIP5,TAMIP,EUCLIPSE,LUCID,GeoMIP,PMIP" -> project:"CMIP5" || project:"TAMIP" || project:"EUCLIPSE" || project:"LUCID" || project:"GeoMIP" || project:"PMIP3"
-        return " || ".join([f"{key}:{quote_str(term)}" for term in value.split(",")])
-    value = one_or_list(value)
-    return f"{key}:{value if key in non_quoted_fields else quote_str(value)}"
+
+    # Every term except (seemingly only) those for the "type" field must be quoted.
+
+    # Lists must be joined with their key names and OR'd together to form a Solr query:
+    # "CMIP5,TAMIP,EUCLIPSE,LUCID,GeoMIP,PMIP" -> project:"CMIP5" || project:"TAMIP" || project:"EUCLIPSE" || project:"LUCID" || project:"GeoMIP" || project:"PMIP3"
+
+    return " || ".join(
+        [f"{key}:{quote_str(term) if key not in non_quoted_fields else term}" for term in ensure_list(value)]
+    )
 
 
 def print_loggers(verbose: bool = True) -> None:  # pragma: no cover -- not used yet
