@@ -31,8 +31,8 @@ class UnifiedSettingsModel(BaseSettings):
     otel: OTELSettings = OTELSettings(otel_service_name=app_id)
 
     # Client Credentials
-    globus_client_id: Optional[str]
-    globus_client_secret: Optional[str]
+    globus_client_id: Optional[str] = None
+    globus_client_secret: Optional[str] = None
 
     # Globus functions are typed to accept UUIDs so use the coercion for validation
     # ref: https://github.com/globus/globus-sdk-python/blob/b6fa2edc7e81201494d150585078a99d3926dfc7/src/globus_sdk/_types.py#L18
