@@ -44,3 +44,61 @@ def test_search_globus_cache(mocker: MagicMock) -> None:
 
     # Verify that the responses are identical
     assert response1.json() == response2.json()
+
+
+def test__get_app_client_called_with_creds(mocker: MagicMock) -> None:
+    from esg_fastapi.api.versions.v1 import routes
+    _get_app_spy = mocker.spy(routes, "_get_app")
+    _get_client_spy = mocker.spy(routes, "_get_client")
+
+    app = app_factory()
+    client = TestClient(app)
+
+    # Mock settings
+    mocker.patch("esg_fastapi.api.versions.v1.routes.settings.globus_search_index", "globus_index")
+    mocker.patch("esg_fastapi.api.versions.v1.routes.settings.globus_client_id", "globus_client_id")
+    mocker.patch("esg_fastapi.api.versions.v1.routes.settings.globus_client_secret", "globus_client_secret")
+
+    # Mock Globus SearchClient and _get_client
+    mock_globus_search_client = mocker.patch("esg_fastapi.api.versions.v1.routes.SearchClient")
+    mock_globus_search_client_instance = MagicMock()
+
+    mock_globus_search_client.return_value = mock_globus_search_client_instance
+    mock_globus_search_client_instance.post_search.return_value = MagicMock(
+        data={"count": 0, "total": 1, "offset": 0, "has_next_page": True, "gmeta": []}
+    )
+
+    # Create a sample ESGSearchQuery
+    esg_query = ESGSearchQuery(query="test_query")
+    response = client.get("/", params=esg_query.model_dump(exclude_none=True))
+
+    assert response.status_code == 200
+    _get_app_spy.assert_called()
+    _get_client_spy.assert_called()
+
+
+def test__get_app_not_called_without_creds(mocker: MagicMock) -> None:
+    from esg_fastapi.api.versions.v1 import routes
+    _get_app_spy = mocker.spy(routes, "_get_app")
+
+    app = app_factory()
+    client = TestClient(app)
+
+    # Mock settings
+    mocker.patch("esg_fastapi.api.versions.v1.routes.settings.globus_search_index", "globus_index")
+
+    # Mock Globus SearchClient and _get_client
+    mock_globus_search_client = mocker.patch("esg_fastapi.api.versions.v1.routes.SearchClient")
+    mock_globus_search_client_instance = MagicMock()
+
+    mock_globus_search_client.return_value = mock_globus_search_client_instance
+    mock_globus_search_client_instance.post_search.return_value = MagicMock(
+        data={"count": 0, "total": 1, "offset": 0, "has_next_page": True, "gmeta": []}
+    )
+
+    # Create a sample ESGSearchQuery
+    esg_query = ESGSearchQuery(query="test_query")
+    response = client.get("/", params=esg_query.model_dump(exclude_none=True))
+
+    assert response.status_code == 200
+    _get_app_spy.assert_not_called()
