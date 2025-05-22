@@ -67,6 +67,10 @@ def query_instrumentor(query: ESGSearchQuery = Depends()) -> Generator[ESGSearch
 
 TrackedESGSearchQuery: ESGSearchQuery = Depends(query_instrumentor)
 
+
+# Need to declare a GlobusApp per thread since ClientApp is not threadsafe
+# Using ContextVars is the best approach to ensure each app that is created
+# is thread-safe. ContextVars are used in the methods below
 _app_var: ContextVar[ClientApp] = ContextVar("_app_var")
 _search_client_var: ContextVar[SearchClient] = ContextVar("_search_client_var")
 
