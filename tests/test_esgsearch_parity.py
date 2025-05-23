@@ -7,7 +7,7 @@ from typing import TypedDict
 from fastapi.testclient import TestClient
 from pytest_bdd import given, scenarios, then, when
 from pytest_bdd.parsers import parse
-from pytest_mock import MockerFixture
+from respx import MockRouter
 
 from esg_fastapi.api.versions.v1.models import ESGSearchResponse, GlobusSearchQuery, GlobusSearchResult
 
@@ -38,19 +38,15 @@ def load_example(query_example: Path) -> SearchParityFixture:
 
 
 @when("the request is sent to ESG FastAPI", target_fixture="responses")
-def send_request(json_example: SearchParityFixture, mocker: MockerFixture) -> ComparisonFixture:
+def send_request(
+    json_example: SearchParityFixture, respx_mock: MockRouter, test_client: TestClient
+) -> ComparisonFixture:
     """Send request to ESG FastAPI and add its response to the fixture."""
-    from esg_fastapi.api.main import app_factory
-
-    client = TestClient(app_factory())
-    mocker.patch(
-        "esg_fastapi.api.versions.v1.routes.SearchClient.post_search",
-        return_value=mocker.Mock(data=json_example["globus_response"]),
+    respx_mock.post(url__regex="https://search.api.globus.org/v1/index/[-a-f0-9]+/search").respond(
+        200, json=json_example["globus_response"], headers={"server-timing": 'total=111.84; "total"'}
     )
-    response = client.get(
-        url="/",
-        params=json_example["request"],
-    ).json()
+
+    response = test_client.get(url="/", params=json_example["request"]).json()
     return {
         **json_example,
         "fastapi_response": response,

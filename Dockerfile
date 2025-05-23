@@ -1,7 +1,5 @@
 FROM python:3.13-slim
 
-ENV PROMETHEUS_MULTIPROC_DIR=/dev/shm
-
 # Install Poetry
 RUN pip install poetry
 
@@ -25,4 +23,4 @@ RUN useradd -ms /bin/bash appuser
 USER appuser
 
 # Command to run the application
-ENTRYPOINT ["uvicorn", "esg_fastapi.wsgi:app", "--host", "0.0.0.0", "--port", "1337"]
+ENTRYPOINT ["uvicorn", "esg_fastapi.wsgi:app", "--host", "0.0.0.0", "--port", "1337", "--proxy-headers"]

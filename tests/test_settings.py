@@ -12,11 +12,11 @@ def test_settings_is_usable() -> None:
     """Ensure that the settings module can be imported and provides at least one setting."""
     from esg_fastapi import settings
 
-    assert settings.globus_search_index is not None
+    assert settings.globus.search_index is not None
 
 
 # TODO: move this somewhere sensible
-def test_app_factory_instruments_app(mocker: MockFixture) -> None:
+def test_app_factory_instruments_app() -> None:
     """The created app is marked as insturmented by the FastAPIInstrumentor."""
     from esg_fastapi.api.versions.v1.routes import app_factory
 
@@ -43,9 +43,7 @@ def test_OTELSettings_instruments_logger(mocker: MockFixture, monkeypatch: pytes
     logging.getLevelNamesMapping().values(),
     ids=logging.getLevelNamesMapping().keys(),
 )
-def test_root_logger_has_OTEL_span_id_and_trace_id(
-    caplog: pytest.LogCaptureFixture, log_level: int, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_root_logger_has_OTEL_span_id_and_trace_id(caplog: pytest.LogCaptureFixture, log_level: int) -> None:
     """At all log levels, root logger includes OTEL trace and span ids."""
     root_formatter = logging.root.handlers[0].formatter
     with caplog.at_level(log_level):

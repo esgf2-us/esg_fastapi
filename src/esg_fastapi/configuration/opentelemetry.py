@@ -1,12 +1,9 @@
 import os
-from functools import partial
 from importlib.metadata import entry_points
-from tempfile import mkdtemp
 from typing import Annotated, Self
 
 from annotated_types import T
-from pydantic import AnyUrl, BaseModel, Field, create_model
-from pydantic_core import Url
+from pydantic import BaseModel, Field, create_model
 
 Exportable = Annotated[T, "Exportable"]
 
@@ -67,6 +64,3 @@ class OTELSettings(GeneratedOTELBase()):
     otel_python_log_level: Exportable[str] = "info"
     otel_python_logging_auto_instrumentation_enabled: Exportable[str] = "true"
     otel_python_log_correlation: Exportable[str] = "true"
-
-    # TODO: This doesn't really fit here, but for now, stick it with the other Exportables
-    prometheus_multiproc_dir: Exportable[str] = Field(default_factory=partial(mkdtemp, prefix="/dev/shm/"))  # noqa: S108 -- `mkdtemp` is secure, we need to ensure a memory-backed tmp or the worker threads will hang waiting on disk i/o

@@ -1,8 +1,6 @@
 """Routes related to the Observability component."""
 
-from fastapi import FastAPI, Request, Response
-from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, generate_latest
-from prometheus_client.multiprocess import MultiProcessCollector
+from fastapi import FastAPI
 
 from .models import ProbeResponse
 
@@ -43,14 +41,3 @@ async def readiness_probe() -> ProbeResponse:
         ProbeResponse: {'status': 'ready'}
     """
     return ProbeResponse(status="ready")
-
-
-@app.get("/metrics")
-def metrics_route(request: Request, response: Response) -> Response:
-    """Endpoint that serves Prometheus metrics."""
-    ephemeral_registry = CollectorRegistry()
-    MultiProcessCollector(ephemeral_registry)
-    return Response(
-        content=generate_latest(ephemeral_registry),
-        headers={"Content-Type": CONTENT_TYPE_LATEST},
-    )

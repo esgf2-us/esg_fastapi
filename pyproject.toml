@@ -1,17 +1,17 @@
 [tool.poetry]
 name = "esg-fastapi"
-version = "0.1.0"
+version = "1.1.1"
 description = ""
-authors = ["Nathan Collier <collierno@ornl.gov>", "Zach Price <pricezt@ornl.gov>"]
+authors = [
+  "Nathan Collier <collierno@ornl.gov>",
+  "Zach Price <pricezt@ornl.gov>",
+]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
 fastapi = "^0.115.12"
-globus-sdk = "^3.56.0"
 uvicorn = "^0.34.2"
-prometheus-fastapi-instrumentator = "^7.1.0"
-gunicorn = "^23.0.0"
 opentelemetry-distro = "^0.55b1"
 opentelemetry-instrumentation-fastapi = "^0.55b1"
 opentelemetry-instrumentation-logging = "^0.55b1"
@@ -20,9 +20,10 @@ opentelemetry-instrumentation-requests = "^0.55b1"
 pydantic-loggings = "^1.6.1"
 pyroscope-io = "^0.8.11"
 pydantic = "^2.11.5"
-semver = "^3.0.4"
 pyroscope-otel = "^0.4.1"
-cachetools = "^6.0.0"
+hishel = "^0.1.2"
+pydantic-extra-types = { extras = ["semver"], version = "^2.10.4" }
+prometheus-client = "^0.22.1"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -31,23 +32,42 @@ httpx = "^0.28.1"
 pytest-mock = "^3.14.1"
 pytest-cov = "^6.1.1"
 ruff = "^0.11.11"
-datamodel-code-generator = "^0.30.1"
+datamodel-code-generator = { extras = ["http"], version = "^0.30.1" }
 pytest-asyncio = "^0.26.0"
+respx = "^0.22.0"
 
 [tool.ruff]
 line-length = 120
 
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F", "D", "UP", "ANN", "ASYNC", "S", "B", "T20", "PT", "SIM", "TCH", "PTH", "TD", "PL"]
+select = [
+  "E4",
+  "E7",
+  "E9",
+  "F",
+  "D",
+  "UP",
+  "ANN",
+  "ASYNC",
+  "S",
+  "B",
+  "T20",
+  "PT",
+  "SIM",
+  "TCH",
+  "PTH",
+  "TD",
+  "PL",
+]
 ignore = [
-  "ANN102",  # ignore deprecated hints for cls arg in @classmethods
-  "TD002",   # don't require author on TODO's
+  "ANN102", # ignore deprecated hints for cls arg in @classmethods
+  "TD002",  # don't require author on TODO's
 ]
 
-[tool.ruff.lint.pydocstyle]
+[tool.ruff.pydocstyle]
 convention = "google"
 
-[tool.ruff.lint.per-file-ignores]
+[tool.ruff.per-file-ignores]
 # Ignore `S101` (Use of `assert` detected) in tests.
 # Ignore `D100` (Missing docstring in public module) in tests.
 "tests/*" = ["S101", "D100"]
@@ -56,10 +76,8 @@ convention = "google"
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
 bdd_features_base_dir = "features/"
-addopts = "--cov --cov-report term-missing:skip-covered --no-cov-on-fail --cov-fail-under=98"
-pythonpath = [
-  "src"
-]
+addopts = "--cov --cov-report term-missing:skip-covered --no-cov-on-fail --cov-fail-under=100"
+pythonpath = ["src"]
 
 [build-system]
 requires = ["poetry-core"]
