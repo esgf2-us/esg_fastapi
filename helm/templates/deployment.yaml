@@ -37,10 +37,13 @@ spec:
         securityContext:
           {{- toYaml .Values.securityContext | nindent 12 }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-        {{- with .Values.ingress.root }}
         args:
+        {{- with .Values.ingress.root }}
         - --root-path
         - {{ . }}
+        {{- end }}
+        {{ range .Values.uvicornArgs }}
+        - {{ . | quote }}
         {{- end }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         env:

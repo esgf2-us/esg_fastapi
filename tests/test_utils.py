@@ -59,3 +59,21 @@ def test_ensure_list_populated_list() -> None:
     from esg_fastapi.utils import ensure_list
 
     assert ensure_list([1, 2, 3, 4]) == [1, 2, 3, 4]
+
+
+def test_get_current_trace_id() -> None:
+    """Test that the current trace ID is returned correctly."""
+    from opentelemetry import trace
+
+    from esg_fastapi.utils import get_current_trace_id
+
+    # Create a mock span with a known trace ID
+    mock_span = trace.get_current_span()
+    mock_span_context = mock_span.get_span_context()
+    mock_trace_id = mock_span_context.trace_id
+
+    # Set the current span context
+    trace.set_span_in_context(mock_span)
+
+    # Call the function and check the result
+    assert get_current_trace_id() == trace.format_trace_id(mock_trace_id)

@@ -1,6 +1,6 @@
+from contextlib import AbstractContextManager
 from contextlib import nullcontext as does_not_raise
 from http import HTTPStatus
-from typing import ContextManager
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -8,57 +8,69 @@ from fastapi.testclient import TestClient
 from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, Counter
 from starlette.requests import Request
 
-from esg_fastapi import settings
-from esg_fastapi.observability.metrics import FACET_LABELS, GLOBAL_LABELS, track_exceptions
+from esg_fastapi.observability.metrics import track_exceptions
+
+
+@pytest.mark.asyncio
+async def test_cache_hits_are_tracked(
+    test_client: TestClient, mocker: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ensure the `esg_bridge_cache_hits_total` metric is incremented on cache hits."""
+    mock_metric = Counter(
+        name="esg_bridge_cache_hits_total",
+        documentation="",
+        registry=CollectorRegistry(),
+    )
+    monkeypatch.setattr("esg_fastapi.api.versions.v1.globus.CACHE_HITS", mock_metric)
+
+    # Prime the cache
+    test_client.get("/")
+
+    # Simulate a cache hit
+    test_client.get("/")
+
+    assert mock_metric._value.get() == 1
+
+
 @pytest.mark.parametrize(
-    ("path", "exc_type",      "handlers",           "expectation"), [
-    ("/foo",  Exception, {Exception: AsyncMock()}, does_not_raise(),),
-    ("/bar",  KeyError,  {KeyError: AsyncMock()},  does_not_raise(),),
-    ("/baz",  Exception, {},                       pytest.raises(Exception),),
-    ("/qux",  KeyError,  {},                       pytest.raises(KeyError),),
+    ("exc_type",      "handlers",           "expectation"), [
+    (Exception, {Exception: AsyncMock()}, does_not_raise(),),
+    (KeyError,  {KeyError: AsyncMock()},  does_not_raise(),),
+    (Exception, {},                       pytest.raises(Exception),),
+    (KeyError,  {},                       pytest.raises(KeyError),),
     ],
 )  # fmt: skip
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 async def test_track_exceptions(
-    path: str,
     exc_type: Exception,
     handlers: dict[Exception, AsyncMock],
-    expectation: ContextManager,
+    expectation: AbstractContextManager,
     monkeypatch: pytest.MonkeyPatch,
+    mocker: MagicMock,
 ) -> None:
-    request = MagicMock(spec=Request)
-    request.method = "GET"
-    request.url.path = path
+    request = mocker.MagicMock(spec=Request)
     request.app.exception_handlers = handlers
-    settings.app_id = "app_id"
-    facet_labels = {field: request.query_params.get(field) for field in FACET_LABELS}
-    request_labels = {
-        "method": request.method,
-        "path": request.url.path,
-        "exception_type": exc_type,
-        "app_name": "app_id",
-    }
-    registry = CollectorRegistry()
+
     mock_metric = Counter(
-        name="exception_count", documentation="", labelnames=[*GLOBAL_LABELS, "exception_type"], registry=registry
+        name="exception_count",
+        documentation="",
+        labelnames=["exception_type"],
+        registry=CollectorRegistry(),
     )
     monkeypatch.setattr("esg_fastapi.observability.metrics.EXCEPTIONS", mock_metric)
+
     with expectation:
         await track_exceptions(request, exc_type)
 
-    assert mock_metric.labels(**facet_labels, **request_labels)._value.get() == 1
+    assert mock_metric.labels(exception_type=type(exc_type).__name__)._value.get() == 1
+
     if handlers:
         request.app.exception_handlers[exc_type].assert_awaited_once_with(request, exc_type)
 
 
-def test_metrics_endpoint():
-    # Create an instance of the HTTP client
-    from esg_fastapi.observability.routes import app
-
-    client = TestClient(app)
-
+def test_metrics_endpoint(test_client: TestClient) -> None:
     # Send a GET request to the /metrics endpoint
-    response = client.get("metrics")
+    response = test_client.get("/metrics")
 
     # Check if the response status code is 200 (OK)
     assert response.status_code == HTTPStatus.OK

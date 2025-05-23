@@ -8,6 +8,8 @@ env:
   # GLOBUS_CLIENT_ID: ""
   # GLOBUS_CLIENT_SECRET: "{{ .Values.ingress.host }}"
 
+uvicornArgs: []
+
 image:
   repository: ghcr.io/esgf2-us/containers/esgf-1-5-bridge
   pullPolicy: Always
@@ -84,7 +86,7 @@ autoscaling:
   targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
 
-# Additional volumes on the output Deployment definition.
+  # Additional volumes on the output Deployment definition.
 volumes: []
 # - name: foo
 #   secret:

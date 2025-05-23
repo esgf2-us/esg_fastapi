@@ -280,8 +280,8 @@ class ESGSearchQuery(BaseModel):
     """Return records last modified after this timestamp"""
     to: Annotated[datetime | None, Query(description="return records last modified before this timestamp")] = None
     """Return records last modified before this timestamp"""
-    offset: Annotated[int, Query(ge=0, description="the number of records to skip")] = 0
-    """The number of records to skip"""
+    offset: Annotated[int, Query(ge=0, le=9999, description="the number of records to skip")] = 0
+    """The number of records to skip. Globus Search allows from 0 to 9999, so we limit it to that range."""
     limit: Annotated[int, Query(ge=0, description="the number of records to return")] = 0
     """The number of records to return"""
     replica: Annotated[bool | None, Query(description="enable to include replicas in the search results")] = None
@@ -437,7 +437,9 @@ class GlobusSearchQuery(BaseModel):
                 if isinstance(field_value, str):
                     # If it's a comma separated string, split it and pass that as the values, otherwise a single-valued list of strings
                     # Set the `type` to `match_any` so match result in the csv
-                    built_filters.append(GlobusMatchFilter(type='match_any', field_name=field, values=field_value.split(',')))
+                    built_filters.append(
+                        GlobusMatchFilter(type="match_any", field_name=field, values=field_value.split(","))
+                    )
                 else:
                     # If it's not a string, it Should(TM) already be a list, pass it as a `match_all` filter
                     built_filters.append(GlobusMatchFilter(field_name=field, values=field_value))
@@ -724,7 +726,7 @@ class ESGSearchResultParams(BaseModel):
         ```
     """
 
-    rows: Decimal = cast(Decimal, 10)
+    rows: Decimal = cast("Decimal", 10)
     """
     The `rows` attribute is an integer representing the maximum number of search results to return. Its default value is `10`.
     """
@@ -736,11 +738,11 @@ class ESGSearchResultParams(BaseModel):
     """
     The `shards` attribute is a `Url` object representing the URL of the Solr shards to use for searching. Its default value is `"esgf-data-node-solr-query:8983/solr/datasets"`.
     """
-    tie: Decimal = cast(Decimal, 0.01)
+    tie: Decimal = cast("Decimal", 0.01)
     """
     The `tie` attribute is a float representing the tie-breaking parameter for Solr faceting. Its default value is `0.01`.
     """
-    facet_limit: Decimal = Field(alias="facet.limit", default=-1)
+    facet_limit: Decimal = Field(alias="facet.limit", default=cast("Decimal", -1))
     """
     The `facet_limit` attribute is an integer representing the maximum number of facet values to return. Its default value is `-1`, which means that all facet values will be returned.
     """
@@ -752,7 +754,7 @@ class ESGSearchResultParams(BaseModel):
     """
     The `facet_method` attribute is a string representing the method to use for faceting. Its default value is `"enum"`.
     """
-    facet_mincount: Decimal = Field(alias="facet.mincount", default=1)
+    facet_mincount: Decimal = Field(alias="facet.mincount", default=cast("Decimal", 1))
     """
     The `facet_mincount` attribute is an integer representing the minimum count required for a facet value to be included in the response. Its default value is `1`.
     """
