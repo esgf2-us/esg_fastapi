@@ -1,15 +1,20 @@
+"""This module defines the main FastAPI application factory."""
+
 from fastapi import FastAPI
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from starlette.routing import Mount
 
+from esg_fastapi.api.versions.v1.globus import FastAPIWithSearchClient, token_renewal_watchdog
 from esg_fastapi.observability.main import observe
 
 
-def app_factory() -> FastAPI:
-    api = FastAPI(
+def app_factory() -> FastAPIWithSearchClient:
+    """Create the FastAPI application and mount the sub-applications."""
+    api = FastAPIWithSearchClient(
         title="ESGF FastAPI",
         summary="An adapter service to translate and execute ESGSearch queries on a Globus Search Index.",
         description="# Long form CommonMark content\n---\nTODO: source this from the same place as the python package description?",
+        lifespan=token_renewal_watchdog,
     )
 
     FastAPIInstrumentor.instrument_app(app=api)
