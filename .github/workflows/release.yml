@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions: {}
+
+jobs:
+  container:
+    name: Build & publish container
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/metadata-action@v5
+        id: metadata
+        with:
+          images: ghcr.io/esgf2-us/containers/esgf-1-5-bridge
+          tags: |
+            type=ref,event=pr
+            type=ref,event=tag
+      - uses: docker/build-push-action@v4
+        with:
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          file: Dockerfile
+          push: true
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+
+  helm:
+    name: Publish Helm chart
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+      - name: Chart | Push
+        uses: appany/helm-oci-chart-releaser@v0.4.2
+        with:
+          name: esgf-1-5-bridge
+          repository: esgf2-us/charts
+          tag: ${{ github.ref_name }}
+          path: helm
+          registry: ghcr.io
+          registry_username: ${{ github.actor }}
+          registry_password: ${{ secrets.GITHUB_TOKEN }}
+          update_dependencies: "true"

@@ -2,12 +2,6 @@ name: K8S Build & Test
 
 on:
   pull_request:
-  workflow_dispatch:
-  push:
-    branches:
-      - "main"
-    tags:
-      - "v*"
 
 permissions: {}
 
@@ -28,7 +22,7 @@ jobs:
       - uses: docker/metadata-action@v5
         id: metadata
         with:
-          images: ghcr.io/esgf2-us/esgf-bridge
+          images: ghcr.io/esgf2-us/containers/esgf-1-5-bridge
           tags: |
             type=ref,event=pr
             type=ref,event=tag
@@ -46,6 +40,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       packages: write
+    outputs:
+      generated-semver: ${{ steps.semantic-version.outputs.generated-semver }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -66,8 +62,8 @@ jobs:
       - name: Chart | Push
         uses: appany/helm-oci-chart-releaser@v0.4.2
         with:
-          name: esg-fastapi
-          repository: esgf2-us
+          name: esgf-1-5-bridge
+          repository: esgf2-us/charts
           tag: ${{ steps.semantic-version.outputs.generated-semver }}
           path: helm
           registry: ghcr.io
@@ -89,7 +85,7 @@ jobs:
         uses: azure/setup-helm@v4.2.0
       - name: Install Helm Chart
         run: |
-          helm install test oci://ghcr.io/esgf2-us/esg-fastapi \
+          helm install test oci://ghcr.io/esgf2-us/charts/esgf-1-5-bridge \
             --version=${{ needs.helm.outputs.generated-semver }} \
             --set image.tag=pr-${{ github.event.pull_request.number }} \
             --set ingress.host=esg-fastapi.test \
@@ -99,6 +95,6 @@ jobs:
       - name: Test API
         run: |
           kubectl get pods --all-namespaces
-          SVC_URL=$(minikube service test-esg-fastapi --url)
+          SVC_URL=$(minikube service test-esgf-1-5-bridge --url)
           echo "Service URL: $SVC_URL"
           curl -s "${SVC_URL}/?limit=0&project=CMIP6&facets=variable_id"
