@@ -22,7 +22,7 @@ pyroscope-io = "^0.8.11"
 pydantic = "^2.11.4"
 semver = "^3.0.4"
 pyroscope-otel = "^0.4.1"
-cachetools = "^5.5.2"
+cachetools = "^6.0.0"
 
 
 [tool.poetry.group.dev.dependencies]
