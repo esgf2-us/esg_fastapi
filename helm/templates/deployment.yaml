@@ -37,6 +37,11 @@ spec:
         securityContext:
           {{- toYaml .Values.securityContext | nindent 12 }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        {{- with .Values.ingress.root }}
+        args:
+        - --root-path
+        - {{ . }}
+        {{- end }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         env:
         - name: UVICORN_PORT
