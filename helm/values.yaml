@@ -9,7 +9,7 @@ env:
   # GLOBUS_CLIENT_SECRET: "{{ .Values.ingress.host }}"
 
 image:
-  repository: ghcr.io/esgf2-us/esgf-bridge
+  repository: ghcr.io/esgf2-us/containers/esgf-1-5-bridge
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
   tag: ci-setup
