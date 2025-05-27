@@ -77,7 +77,7 @@ services:
     - "3000:3000"
 
   elasticsearch:
-    image: elasticsearch:8.13.0
+    image: elasticsearch:9.0.1
     network_mode: host
     environment:
     - bootstrap.memory_lock=false
