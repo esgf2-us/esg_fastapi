@@ -50,6 +50,7 @@ service:
 ingress:
   enabled: true
   host:
+  root: /
   className: ""
   labels:
   annotations:
