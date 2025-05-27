@@ -25,4 +25,4 @@ RUN useradd -ms /bin/bash appuser
 USER appuser
 
 # Command to run the application
-CMD ["uvicorn", "esg_fastapi.wsgi:app", "--host", "0.0.0.0", "--port", "1337", "--reload"]
+ENTRYPOINT ["uvicorn", "esg_fastapi.wsgi:app", "--host", "0.0.0.0", "--port", "1337"]
