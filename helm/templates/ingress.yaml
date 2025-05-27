@@ -23,7 +23,7 @@ spec:
     - host: {{ .Values.ingress.host | quote }}
       http:
         paths:
-        - path: /
+        - path: {{ .Values.ingress.root }}
           pathType: ImplementationSpecific
           backend:
             service:
