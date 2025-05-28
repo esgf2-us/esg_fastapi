@@ -8,7 +8,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.11"
 fastapi = "^0.115.12"
-globus-sdk = "^3.56.0"
+globus-sdk = "^3.56.1"
 uvicorn = "^0.34.2"
 prometheus-fastapi-instrumentator = "^7.1.0"
 gunicorn = "^23.0.0"
