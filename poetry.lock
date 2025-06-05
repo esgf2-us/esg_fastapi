@@ -576,14 +576,14 @@ files = [
 
 [[package]]
 name = "globus-sdk"
-version = "3.56.0"
+version = "3.57.0"
 description = "Globus SDK for Python"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "globus_sdk-3.56.0-py3-none-any.whl", hash = "sha256:373ede5df9a0591f2e94d3522c75aec8acd3161f06bfcef07433ba5eb68a46cf"},
-    {file = "globus_sdk-3.56.0.tar.gz", hash = "sha256:3a794106136f3d43505bb2fede3e81a63735d608a812d11338135126a857e7ca"},
+    {file = "globus_sdk-3.57.0-py3-none-any.whl", hash = "sha256:9ff6f7d23bbd2f16e8a074c2f381f5772f2d90416a51ff31244b5323a150c4e9"},
+    {file = "globus_sdk-3.57.0.tar.gz", hash = "sha256:15ac2cd1313777be9ce026a51437c90db7c25311e8a4b3950a76ab744d0fb425"},
 ]
 
 [package.dependencies]
@@ -2076,4 +2076,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "391dd5bc80c45a3f5eefe2ecb83c054ad1027959a0dec238b703d4c4ac52c231"
+content-hash = "2e0c45ba079be8be0e870fe4cb2cf00d012a5cfffb9e477e394e03f451920f8d"
