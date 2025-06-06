@@ -34,91 +34,91 @@
         "name": "activity_id",
         "type": "terms",
         "field_name": "activity_id",
-        "size": 2000000000
+        "size": 5000
       },
       {
         "name": "data_node",
         "type": "terms",
         "field_name": "data_node",
-        "size": 2000000000
+        "size": 5000
       },
       {
         "name": "source_id",
         "type": "terms",
         "field_name": "source_id",
-        "size": 2000000000
+        "size": 5000
       },
       {
         "name": "institution_id",
         "type": "terms",
         "field_name": "institution_id",
-        "size": 2000000000
+        "size": 5000
       },
       {
         "name": "source_type",
         "type": "terms",
         "field_name": "source_type",
-        "size": 2000000000
+        "size": 5000
       },
       {
         "name": "experiment_id",
         "type": "terms",
         "field_name": "experiment_id",
-        "size": 2000000000
+        "size": 5000
       },
       {
         "name": "sub_experiment_id",
         "type": "terms",
         "field_name": "sub_experiment_id",
-        "size": 2000000000
+        "size": 5000
       },
       {
         "name": "nominal_resolution",
         "type": "terms",
         "field_name": "nominal_resolution",
-        "size": 2000000000
+        "size": 5000
       },
       {
         "name": "variant_label",
         "type": "terms",
         "field_name": "variant_label",
-        "size": 2000000000
+        "size": 5000
       },
       {
         "name": "grid_label",
         "type": "terms",
         "field_name": "grid_label",
-        "size": 2000000000
+        "size": 5000
       },
       {
         "name": "table_id",
         "type": "terms",
         "field_name": "table_id",
-        "size": 2000000000
+        "size": 5000
       },
       {
         "name": "frequency",
         "type": "terms",
         "field_name": "frequency",
-        "size": 2000000000
+        "size": 5000
       },
       {
         "name": "realm",
         "type": "terms",
         "field_name": "realm",
-        "size": 2000000000
+        "size": 5000
       },
       {
         "name": "variable_id",
         "type": "terms",
         "field_name": "variable_id",
-        "size": 2000000000
+        "size": 5000
       },
       {
         "name": "cf_standard_name",
         "type": "terms",
         "field_name": "cf_standard_name",
-        "size": 2000000000
+        "size": 5000
       }
     ]
   },
