@@ -143,7 +143,7 @@ def search_globus(q: ESGSearchQuery = TrackedESGSearchQuery) -> ESGSearchRespons
                 rows_response = GlobusSearchResult.model_validate(
                     globus_search_client.post_search(settings.globus_search_index, globus_rows_query).data
                 )
-            with tracer.start_as_current_span("globus_rows_query"):
+            with tracer.start_as_current_span("globus_facets_query"):
                 facets_response = GlobusSearchResult.model_validate(
                     globus_search_client.post_search(settings.globus_search_index, globus_facets_query).data
                 )

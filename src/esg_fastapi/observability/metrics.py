@@ -2,6 +2,7 @@
 
 from contextlib import ExitStack
 
+from opentelemetry import trace
 from prometheus_client import (
     Counter,
     Gauge,
@@ -64,7 +65,10 @@ async def track_prometheus_metrics(request: Request, call_next: RequestResponseE
     request_labels = {"method": request.method, "path": request.url.path, "app_name": settings.app_id}
     request_facets = {field: request.query_params.get(field) for field in FACET_LABELS}
     stack = ExitStack()
-    REQUESTS.labels(**request_labels, **request_facets).inc()
+    span = trace.get_current_span()
+    trace_id = trace.format_trace_id(span.get_span_context().trace_id)
+
+    REQUESTS.labels(**request_labels, **request_facets).inc(exemplar={"TraceID": trace_id})
     with stack:
         # Start a timer for the request.
         stack.enter_context(REQUESTS_PROCESSING_TIME.labels(**request_labels, **request_facets).time())
@@ -101,7 +105,11 @@ async def track_exceptions(request: Request, exc: Exception) -> None:
         "app_name": settings.app_id,
     }
     request_facets = {field: request.query_params.get(field) for field in FACET_LABELS}
-    EXCEPTIONS.labels(**request_labels, **request_facets).inc()
+
+    span = trace.get_current_span()
+    trace_id = trace.format_trace_id(span.get_span_context().trace_id)
+
+    EXCEPTIONS.labels(**request_labels, **request_facets).inc(exemplar={"TraceID": trace_id})
     if handler := request.app.exception_handlers.get(exc):
         return await handler(request, exc)
     else:

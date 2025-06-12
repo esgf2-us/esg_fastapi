@@ -5,13 +5,13 @@ volumes:
   tempo-data:
 
 services:
-
   esg-fastapi:
     build:
       context: ..
-      dockerfile: Dockerfile.local
+      dockerfile: Dockerfile
     environment:
-      OTEL_TRACES_EXPORTER: console
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://localhost:4317
     network_mode: host
     ports:
     - "1337:1337"
@@ -71,7 +71,6 @@ services:
     - GF_AUTH_ANONYMOUS_ENABLED=true
     - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
     - GF_AUTH_DISABLE_LOGIN_FORM=true
-    - GF_INSTALL_PLUGINS=pyroscope-panel
     - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor traceQLStreaming metricsSummary traceToProfiles tracesEmbeddedFlameGraph traceToMetrics
     ports:
     - "3000:3000"
@@ -81,12 +80,12 @@ services:
     network_mode: host
     environment:
     - bootstrap.memory_lock=false
-    - 'ES_JAVA_OPTS=-Xms512m -Xmx512m'
+    - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     - discovery.type=single-node
     - xpack.security.enabled=false
     ports:
-    - '9200:9200'
-    - '9300:9300'
+    - "9200:9200"
+    - "9300:9300"
 
   fluent-bit:
     image: fluent/fluent-bit
