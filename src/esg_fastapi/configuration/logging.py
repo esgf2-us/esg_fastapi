@@ -4,6 +4,7 @@ from functools import partial
 from typing import Self
 
 from opentelemetry import trace
+from opentelemetry.instrumentation.logging import DEFAULT_LOGGING_FORMAT
 from pydantic_loggings.base import Formatter, Handler
 from pydantic_loggings.base import Logger as LoggerModel
 from pydantic_loggings.base import Logging as LoggingConfig
@@ -37,9 +38,7 @@ class ESGFLogging(LoggingConfig):
             {
                 "datefmt": "[%Y-%m-%d %H:%M:%S %z]",
                 "style": "%",
-                # based on opentelemetry.instrumentation.logging.DEFAULT_LOGGING_FORMAT but with a newline before the message to make
-                # container logs more readable
-                "format": "%(asctime)s %(levelname)s [%(name)s] [%(filename)s:%(lineno)d] [trace_id=%(otelTraceID)s span_id=%(otelSpanID)s resource.service.name=%(otelServiceName)s trace_sampled=%(otelTraceSampled)s]\n- %(message)s",
+                "format": DEFAULT_LOGGING_FORMAT,
             }
         )
     }
@@ -51,7 +50,7 @@ class ESGFLogging(LoggingConfig):
         "uvicorn": {"handlers": ["stdout"]},
     }
     root: OptionalModel[LoggerModel] = LoggerModel.model_validate(
-        {"handlers": ["stdout"], "level": "INFO", "propagate": True}
+        {"handlers": ["stdout"], "level": "DEBUG", "propagate": True}
     )
 
     def model_post_init(self: Self, __context) -> None:

@@ -1,6 +1,6 @@
 FROM python:3.13-slim
 
-ENV PROMETHEUS_MULTIPROC_DIR /dev/shm
+ENV PROMETHEUS_MULTIPROC_DIR=/dev/shm
 
 # Install Poetry
 RUN pip install poetry
