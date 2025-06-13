@@ -1,11 +1,10 @@
 from pydantic import AnyUrl, BaseModel
-from pydantic_core import Url
 
 
 class Pyroscope(BaseModel):
     application_name: str  # set by the parent model
 
-    server_address: AnyUrl = Url("http://localhost:4040")
+    server_address: AnyUrl = AnyUrl("http://localhost:4040")
     """Pyroscope server address"""
 
     sample_rate: int = 100

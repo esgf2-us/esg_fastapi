@@ -1,43 +1,18 @@
 """Utilities that don't fit well in other modules."""
 
 import logging
-import time
 from collections.abc import Sequence
-from types import TracebackType
-from typing import Any, Optional, Self
+from importlib.metadata import version
+from typing import Any
 
 from annotated_types import T
+from pydantic_extra_types.semantic_version import SemanticVersion
 
 
-class Timer:
-    """Context manager for timing the seconds elapsed during a context.
 
-    The `Timer` context manager is used to measure the time taken for a block of code to execute.
-
-    Attributes:
-        start_time (int): The start time of the context in nanoseconds.
-        end_time (int): The end time of the context in nanoseconds.
-        time (int): The time taken by the context in seconds.
-    """
-
-    def __enter__(self: Self) -> Self:
-        """Open the context and start the timer.
-
-        Returns:
-            Timer: Exposes the start, end, and delta in seconds of the context.
-        """
-        self.start_time = time.monotonic_ns()
-        return self
-
-    def __exit__(
-        self: Self,
-        ex_typ: Optional[type[BaseException]],
-        ex_val: Optional[BaseException],
-        traceback: Optional[TracebackType],
-    ) -> None:
-        """Close the context and stop the timer."""
-        self.end_time = time.monotonic_ns()
-        self.time = int((self.end_time - self.start_time) // 1e9)
+def package_version() -> SemanticVersion:
+    """Return the package version as a SemanticVersion object."""
+    return SemanticVersion.parse(version("esg_fastapi"))
 
 
 def one_or_list(value: Sequence[T] | T) -> T | Sequence[T]:
