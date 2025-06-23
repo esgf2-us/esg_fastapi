@@ -10,7 +10,7 @@ from typing import Literal, Optional
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from hishel import AsyncCacheClient, AsyncInMemoryStorage, Controller
-from httpx import Response, TimeoutException
+from httpx import HTTPStatusError, Response, TimeoutException
 from opentelemetry import trace
 from starlette import status
 
@@ -126,8 +126,8 @@ async def token_renewal_watchdog(app: FastAPIWithSearchClient) -> AsyncGenerator
         yield
 
 
-async def handle_upstream_connection_error(request: Request, exc: TimeoutException) -> JSONResponse:
-    """Handle connection errors to the Globus Search service."""
+async def handle_upstream_timeout(request: Request, exc: TimeoutException) -> JSONResponse:
+    """Handle timeout errors to the Globus Search service."""
     error_response = {
         "type": type(exc).__name__,
         "title": "Timeout While Connecting to Globus Search",
@@ -137,3 +137,16 @@ async def handle_upstream_connection_error(request: Request, exc: TimeoutExcepti
     }
     logger.error(json.dumps(error_response), exc_info=True)
     return JSONResponse(status_code=status.HTTP_504_GATEWAY_TIMEOUT, content=error_response)
+
+
+async def handle_upstream_http_status_error(_: Request, exc: HTTPStatusError) -> JSONResponse:
+    """Handle http status errors from the Globus Search service."""
+    error_response = {
+        "type": type(exc).__name__,
+        "title": "HTTP Status Error While Connecting to Globus Search",
+        "status": exc.response.status_code,
+        "detail": str(exc),
+        "trace_id": get_current_trace_id(),
+    }
+    logger.error(json.dumps(error_response), exc_info=True)
+    return JSONResponse(status_code=exc.response.status_code, content=error_response)
