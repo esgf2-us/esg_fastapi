@@ -1,14 +1,17 @@
 import os
 from importlib.metadata import entry_points
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
 from annotated_types import T
 from pydantic import BaseModel, Field, create_model
+
+from esg_fastapi.utils import metadata
 
 Exportable = Annotated[T, "Exportable"]
 
 
 class ExportingModel(BaseModel):
+
     def model_post_init(self: Self, _) -> None:
         """Export any set model field values that are annotated with `Exportable` as environment variables.
 
@@ -19,7 +22,7 @@ class ExportingModel(BaseModel):
         they respect and during this post-init hook, export any that have values to the environment so that
         OpenTelemetry will see them and we can configure everything in one place and generate docs and etc.
         """
-        for name, field in self.model_fields.items():
+        for name, field in type(self).model_fields.items():
             if "Exportable" in field.metadata and (field_value := getattr(self, name)):
                 os.environ[name.upper()] = str(field_value)
 
@@ -60,7 +63,12 @@ class OTELSettings(GeneratedOTELBase()):
     settings env vars default to (it doesn't seem to be exposed anywhere).
     """
 
-    otel_service_name: Exportable[str]  # Will be set by the parent model
+    otel_service_name: Exportable[str] = metadata["name"]
     otel_python_log_level: Exportable[str] = "info"
     otel_python_logging_auto_instrumentation_enabled: Exportable[str] = "true"
     otel_python_log_correlation: Exportable[str] = "true"
+    otel_traces_exporter: Exportable[Literal["none", "otlp", "console"]] = Field(
+        default="none",
+        title="OTLP Traces",
+        description="Trace exporter to be used. See https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/#exporter-selection",
+    )

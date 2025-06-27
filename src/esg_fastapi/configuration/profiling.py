@@ -1,8 +1,10 @@
 from pydantic import AnyUrl, BaseModel
 
+from esg_fastapi.utils import metadata
+
 
 class Pyroscope(BaseModel):
-    application_name: str  # set by the parent model
+    application_name: str = metadata["name"]
 
     server_address: AnyUrl = AnyUrl("http://localhost:4040")
     """Pyroscope server address"""

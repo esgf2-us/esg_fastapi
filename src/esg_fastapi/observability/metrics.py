@@ -13,16 +13,15 @@ from starlette.middleware.base import RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
 
-from esg_fastapi import settings
 from esg_fastapi.api.versions.v1.models import ESGSearchQuery
-from esg_fastapi.utils import get_current_trace_id
+from esg_fastapi.utils import get_current_trace_id, metadata
 
 logger = logging.getLogger(__name__)
 
 ESG_FASTAPI = Info("fastapi_app", "FastAPI application information.").info(
     {
-        "app_name": settings.app_id,
-        "version": str(settings.app_version),
+        "app_name": metadata['name'],
+        "version": metadata['version'],
     }
 )
 EXCEPTIONS = Counter(

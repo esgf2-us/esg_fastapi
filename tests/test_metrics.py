@@ -11,10 +11,7 @@ from starlette.requests import Request
 from esg_fastapi.observability.metrics import track_exceptions
 
 
-@pytest.mark.asyncio
-async def test_cache_hits_are_tracked(
-    test_client: TestClient, mocker: MagicMock, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_cache_hits_are_tracked(test_client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure the `esg_bridge_cache_hits_total` metric is incremented on cache hits."""
     mock_metric = Counter(
         name="esg_bridge_cache_hits_total",
@@ -24,10 +21,10 @@ async def test_cache_hits_are_tracked(
     monkeypatch.setattr("esg_fastapi.api.versions.v1.globus.CACHE_HITS", mock_metric)
 
     # Prime the cache
-    test_client.get("/")
+    _ = test_client.get("/")
 
     # Simulate a cache hit
-    test_client.get("/")
+    _ = test_client.get("/")
 
     assert mock_metric._value.get() == 1
 
