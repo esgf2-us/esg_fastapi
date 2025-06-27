@@ -2,17 +2,13 @@
 
 import logging
 from collections.abc import Sequence
-from importlib.metadata import version
+from importlib.metadata import metadata as get_metadata
 from typing import Any
 
 from annotated_types import T
 from opentelemetry import trace
-from pydantic_extra_types.semantic_version import SemanticVersion
 
-
-def package_version() -> SemanticVersion:
-    """Return the package version as a SemanticVersion object."""
-    return SemanticVersion.parse(version("esg_fastapi"))
+metadata = get_metadata("esg_fastapi")
 
 
 def get_current_trace_id() -> str:

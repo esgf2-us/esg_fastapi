@@ -88,9 +88,10 @@ WITHOUT_FACETS = {"facets": []}
 
 
 @router.get("/search")
-async def search() -> RedirectResponse:
+async def search(request: Request) -> RedirectResponse:
     """Redirects to the root path esgf-pyclient compatibility."""
-    return RedirectResponse("/", status_code=status.HTTP_308_PERMANENT_REDIRECT)
+    root = request.scope.get("root_path") or "/"
+    return RedirectResponse(root, status_code=status.HTTP_308_PERMANENT_REDIRECT)
 
 
 @router.get("/", response_model=ESGSearchResponse, dependencies=[Depends(cache_control_response)])

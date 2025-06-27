@@ -8,7 +8,6 @@ and informative logging across the application.
 
 import logging
 from enum import Enum
-from functools import partial
 from typing import Self
 
 from opentelemetry import trace
@@ -17,6 +16,8 @@ from pydantic_loggings.base import Formatter, Handler
 from pydantic_loggings.base import Logger as LoggerModel
 from pydantic_loggings.base import Logging as LoggingConfig
 from pydantic_loggings.types_ import OptionalModel, OptionalModelDict
+
+from esg_fastapi.utils import metadata
 
 LogLevels = Enum("LogLevels", logging.getLevelNamesMapping())
 
@@ -31,7 +32,7 @@ def record_factory[**P](*args: P.args, **kwargs: P.kwargs) -> logging.LogRecord:
 
     Args:
         *args: Variable length argument list.  Passed to the default log record factory.
-        **kwargs: Arbitrary keyword arguments. Must include 'service_name'.
+        **kwargs: Arbitrary keyword arguments.
 
     Returns:
         logging.LogRecord: A log record with added OpenTelemetry context attributes.
@@ -40,7 +41,7 @@ def record_factory[**P](*args: P.args, **kwargs: P.kwargs) -> logging.LogRecord:
     ctx = span.get_span_context()
     record = default_log_record_factory(*args, **kwargs)
 
-    record.otelServiceName = kwargs["service_name"]
+    record.otelServiceName = metadata["name"]
     record.otelSpanID = format(ctx.span_id, "016x")
     record.otelTraceID = format(ctx.trace_id, "032x")
     record.otelTraceSampled = ctx.trace_flags.sampled
@@ -57,8 +58,6 @@ class ESGFLogging(LoggingConfig):
     for the ESGF project, with specific attention to OpenTelemetry integration.
 
     Attributes:
-        service_name (str): The name of the service, used to populate the `resource.service.name`
-            attribute in the log records.
         formatters (OptionalModelDict[Formatter]): A dictionary of log formatter configurations.
             Includes a default formatter "otel" that incorporates OpenTelemetry context.
         handlers (OptionalModelDict[Handler]): A dictionary of log handler configurations.
@@ -68,8 +67,6 @@ class ESGFLogging(LoggingConfig):
         root (OptionalModel[LoggerModel]): The root logger configuration, set to log to "stdout"
             at the INFO level and propagate logs to other loggers.
     """
-
-    service_name: str
 
     formatters: OptionalModelDict[Formatter] = {
         "otel": Formatter.model_validate(
@@ -96,5 +93,4 @@ class ESGFLogging(LoggingConfig):
     def model_post_init(self: Self, __context) -> None:
         """Ensure the logger is configured as soon as the model is validated."""
         self.configure()
-        factory = partial(record_factory, service_name=self.service_name)
-        logging.setLogRecordFactory(factory)
+        logging.setLogRecordFactory(record_factory)

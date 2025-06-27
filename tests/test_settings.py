@@ -29,13 +29,15 @@ def test_OTELSettings_instruments_logger(mocker: MockFixture, monkeypatch: pytes
     mock_record_factory = mocker.Mock()
     mock_record_factory_setter = mocker.Mock()
     fake_service_name = "foo"
+    from esg_fastapi.configuration.logging import metadata
+
+    monkeypatch.setitem(metadata, "name", fake_service_name)
     monkeypatch.setattr("esg_fastapi.configuration.logging.record_factory", mock_record_factory)
     monkeypatch.setattr("esg_fastapi.configuration.logging.logging.setLogRecordFactory", mock_record_factory_setter)
     from esg_fastapi.configuration.logging import ESGFLogging
 
-    ESGFLogging(service_name=fake_service_name)
-    assert mock_record_factory_setter.call_args.args[0].func == mock_record_factory
-    assert mock_record_factory_setter.call_args.args[0].keywords["service_name"] == fake_service_name
+    ESGFLogging()
+    assert mock_record_factory_setter.call_args.args[0] == mock_record_factory
 
 
 @pytest.mark.parametrize(
