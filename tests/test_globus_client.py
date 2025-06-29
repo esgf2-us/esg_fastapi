@@ -14,37 +14,8 @@ from esg_fastapi.api.versions.v1.globus import (
     keep_token_fresh,
     token_renewal_watchdog,
 )
-from esg_fastapi.api.versions.v1.models import GlobusMetaEntry, GlobusMetaResult, GlobusSearchQuery, GlobusSearchResult
+from esg_fastapi.api.versions.v1.models import GlobusSearchQuery
 from esg_fastapi.api.versions.v1.types import GlobusToken, GlobusTokenResponse
-
-
-@pytest.fixture(autouse=True)
-def mock_globus_search(respx_mock: MockRouter) -> MockRouter:
-    """Mock the Globus Search API with a default response."""
-    respx_mock.post(
-        name="post_search",
-        url__regex="https://search.api.globus.org/v1/index/(.+)/search",
-    ).return_value = httpx.Response(
-        status_code=200,
-        headers={
-            "server-timing": 'authorization=0.17; "authorization",establish_es_session=72.25; "establish_es_session",query_exec_build_query=61.3; "query_exec_build_query",raw_query_exec_1=541.84; "raw_query_exec_1",query_exec_invoke=542.09; "query_exec_invoke",postfilter_query_result=0.1; "postfilter_query_result",query_execution=603.8; "Query Execution Time",overall=676.55; "overall",schemadump=0.22; "schemadump",response_compression=0.03; "response_compression",total=688.358675309; "total"'
-        },
-        json=GlobusSearchResult(
-            gmeta=[
-                GlobusMetaResult(
-                    subject="test",
-                    entries=[
-                        GlobusMetaEntry(content={}, entry_id="some_entry", matched_principal_sets=["some_principal"])
-                    ],
-                )
-            ],
-            offset=0,
-            count=0,
-            total=0,
-            has_next_page=False,
-        ).model_dump(),
-    )
-    return respx_mock
 
 
 @pytest.fixture
@@ -67,7 +38,7 @@ async def test_globus_timing_headers_parsing() -> None:
         "overall": 676550,
         "schemadump": 220,
         "response_compression": 30,
-        "total": 688358,
+        "total": 688350,
     }
 
     globus_client = ThinSearchClient()

@@ -20,7 +20,6 @@ class UnifiedSettingsModel(BaseSettings):
     pyroscope: Pyroscope = Pyroscope()
     logging: LoggingConfig = ESGFLogging()
     otel: OTELSettings = OTELSettings()
-
     globus: GlobusSettings = GlobusSettings()
 
 

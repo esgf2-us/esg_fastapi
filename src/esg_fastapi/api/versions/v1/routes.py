@@ -113,8 +113,6 @@ async def search_globus(request: Request, q: ESGSearchQuery = TrackedESGSearchQu
     - response: Contains the actual search results, including the total number of results, the starting offset, and the actual search results.
     - facet_counts: Contains the counts of distinct values for each facet in the search results.
     """
-    logger.info("Starting query")
-
     globus_query = GlobusSearchQuery.from_esg_search_query(q)
 
     # Globus Search is orders of magnitude faster when searching for rows or facets only vs rows and facets.
