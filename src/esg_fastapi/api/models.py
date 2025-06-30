@@ -9,21 +9,16 @@ They are organized into two main sections:
 This provides an easy way to validate and serialize the API requests and responses, ensuring that they conform to the specified structure.
 """
 
-from collections import defaultdict
 from collections.abc import Sequence
 from datetime import datetime
-from decimal import Decimal
 from typing import (
     Annotated,
     Any,
     Literal,
     Self,
-    TypeGuard,
-    cast,
     get_args,
 )
 
-from annotated_types import T
 from fastapi import Query
 from pydantic import (
     BaseModel,
@@ -34,11 +29,11 @@ from pydantic import (
     StringConstraints,
     computed_field,
     field_validator,
-    validate_call,
 )
 from pydantic_core import Url
 
 from esg_fastapi.api.types import (
+    ESGSearchFacetField,
     LowerCased,
     MultiValued,
     SolrDoc,
@@ -46,28 +41,61 @@ from esg_fastapi.api.types import (
     Stringified,
     SupportedAsFacets,
     SupportedAsFilters,
-    SupportedAsFQ,
-    SupportedAsSolrDocs,
 )
 from esg_fastapi.utils import (
     ensure_list,
-    format_fq_field,
-    one_or_list,
+    fq_field_from_esg_search_query,
+    is_sequence_of,
+    solr_docs_from_globus_meta_results,
 )
 
-NON_QUERIABLE_FIELDS = {"query", "format", "limit", "offset", "replica", "distrib", "facets"}
+
+class ESGSearchQueryBase(BaseModel):
+    """Defines all the meta-fields that aren't part of the data itself, but control the query results."""
+
+    model_config = ConfigDict(
+        validate_default=True,
+        extra="forbid",
+        serialize_by_alias=True,
+        populate_by_name=True,
+        use_attribute_docstrings=True,
+    )
+
+    query: str | None = None
+    """A Solr search string."""
+    format: Literal["application/solr+xml", "application/solr+json"] = "application/solr+json"
+    """The format of the response."""
+    bbox: str | None = None
+    """The geospatial search box [west, south, east, north]"""
+    offset: Annotated[int, Query(ge=0, le=9999)] = 0
+    """The number of records to skip. Globus Search only allows from 0 to 9999, so we limit it to that range."""
+    limit: Annotated[int, Query(ge=0)] = 0
+    """The number of records to return"""
+    replica: bool | None = None
+    """Enable to include replicas in the search results"""
+    distrib: bool | None = None
+    """Enable to search across all federated nodes"""
+    facets: Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"\w+(,\w+)*?")] | None = None
+    """A comma-separated list of field names to facet on."""
+
+    min_version: int | None = None
+    """Constrain query results to `version` field after this date."""
+    max_version: int | None = None
+    """Constrain query results to `version` field before this date."""
+
+    from_: datetime | None = Query(None, alias="from")
+    """Return records last modified after this timestamp"""
+    to: datetime | None = None
+    """Return records last modified before this timestamp"""
 
 
-class ESGSearchQuery(BaseModel):
-    """Represents the query parameters accepted by the ESG Search API.
-
-    TODO: Build this list dynamically from Solr's luke API to ensure all possible params are captured.
-    """
-
-    model_config = ConfigDict(validate_default=True)
+class ESGSearchQuery(ESGSearchQueryBase):
+    """Represents the query parameters accepted by the ESG Search API."""
 
     id: str | None = None
     dataset_id: str | None = None
+    type: Literal["Dataset", "File"] = "Dataset"
+    """The type of record to search for."""
 
     access: MultiValued[str] | None = None
     """Access level of the dataset."""
@@ -257,46 +285,17 @@ class ESGSearchQuery(BaseModel):
     """Version number of the dataset."""
     year_of_aggregation: MultiValued[str] | None = None
     """Year of aggregation of the dataset."""
-    query: Annotated[str, Query(description="a general search string")] | None = "*:*"
-    """A Solr search string."""
-    format: Annotated[
-        Literal["application/solr+xml", "application/solr+json"],
-        Query(description="the type of data returned in the response"),
-    ] = "application/solr+xml"
-    """The format of the response."""
-    type: Annotated[Literal["Dataset", "File", "Aggregation"], Query(description="the type of database record")] = (
-        "Dataset"
-    )
-    """The type of record to search for."""
-    bbox: Annotated[str | None, Query(description="the geospatial search box [west, south, east, north]")] = None
-    """The geospatial search box [west, south, east, north]"""
-    start: Annotated[datetime | None, Query(description="beginning of the temporal coverage in the dataset")] = None
+    start: datetime | None = None
     """Beginning of the temporal coverage in the dataset"""
-    end: Annotated[datetime | None, Query(description="ending of the temporal coverage in the dataset")] = None
+    end: datetime | None = None
     """Ending of the temporal coverage in the dataset"""
-    _from: Annotated[
-        datetime | None, Query(alias="from", description="return records last modified after this timestamp")
-    ] = None
-    """Return records last modified after this timestamp"""
-    to: Annotated[datetime | None, Query(description="return records last modified before this timestamp")] = None
-    """Return records last modified before this timestamp"""
-    offset: Annotated[int, Query(ge=0, le=9999, description="the number of records to skip")] = 0
-    """The number of records to skip. Globus Search allows from 0 to 9999, so we limit it to that range."""
-    limit: Annotated[int, Query(ge=0, description="the number of records to return")] = 0
-    """The number of records to return"""
-    replica: Annotated[bool | None, Query(description="enable to include replicas in the search results")] = None
-    """Enable to include replicas in the search results"""
-    latest: Annotated[bool | None, Query(description="enable to only return the latest versions")] = None
+    latest: bool | None = None
     """Enable to only return the latest versions"""
-    distrib: Annotated[bool | None, Query(description="enable to search across all federated nodes")] = None
-    """Enable to search across all federated nodes"""
-    facets: Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"\w+(,\w+)*?")] | None = None
-    """A comma-separated list of field names to facet on."""
 
     @classmethod
     def _queriable_fields(cls) -> set[str]:
         """All fields that are queriable in Solr."""
-        return {field for field in cls.model_fields if field not in NON_QUERIABLE_FIELDS}
+        return cls.model_fields.keys() - ESGSearchQueryBase.model_fields.keys()
 
 
 class GlobusFilter(BaseModel):
@@ -306,7 +305,7 @@ class GlobusFilter(BaseModel):
     ref: https://docs.globus.org/api/search/reference/post_query/#gfilter
     """
 
-    type: Literal["match_all", "match_any"]
+    type: Literal["match_all", "match_any", "range"]
     """The type of filter to apply."""
 
 
@@ -319,6 +318,26 @@ class GlobusMatchFilter(GlobusFilter):
     """The name of the field to filter on."""
     # TODO: restrict this to only known fields (maybe after refactor to pull fields live from Solr)
     values: Annotated[Sequence[str | bool], BeforeValidator(ensure_list)]
+    """The values to filter on."""
+
+
+class GlobusRange(BaseModel):
+    """Represents a range in a `GlobusRangeFilter`."""
+
+    model_config = ConfigDict(serialize_by_alias=True)
+
+    from_: datetime | int | Literal["*"] = Field("*", serialization_alias="from")
+    to: datetime | int | Literal["*"] = Field("*")
+
+
+class GlobusRangeFilter(GlobusFilter):
+    """Globus Filter Specialization for Range type filters."""
+
+    type: Literal["range"] = "range"
+    """The type of filter to apply."""
+    field_name: str
+    """The name of the field to filter on."""
+    values: Sequence[GlobusRange]
     """The values to filter on."""
 
 
@@ -339,38 +358,8 @@ class GlobusFacet(BaseModel):
     """The number of distinct facet values (buckets) to return."""
 
 
-def is_sequence_of(value: object, value_type: type[T]) -> TypeGuard[Sequence[T]]:
-    """Check if a given value is a sequence of a specific type.
-
-    Parameters:
-    value (object): The value to be checked.
-    value_type (type[T]): The type of the elements in the sequence.
-
-    Returns:
-    TypeGuard[Sequence[T]]: A type guard that returns `True` if the given value is a sequence of the specified type, and `False` otherwise.
-
-    Raises:
-    TypeError: If the `value_type` parameter is not a type.
-
-    Example:
-    ```python
-    from typing import List, Dict
-
-    # Check if a list is a sequence of integers
-    is_sequence_of([1, 2, 3], int)  # Returns True
-
-    # Check if a dictionary is a sequence of integers
-    is_sequence_of({1: 'one', 2: 'two'}, int)  # Returns False
-    ```
-    """
-    return isinstance(value, Sequence) and all(isinstance(i, value_type) for i in value)
-
-
 class GlobusSearchQuery(BaseModel):
-    """Container model to describe the fields of a Globus Search Query Document.
-
-    TODO: boosts and sorts
-    """
+    """Container model to describe the fields of a Globus Search Query Document."""
 
     model_config = ConfigDict(
         serialize_by_alias=True,  # serialize fields by alias (e.g. "_version" -> "@version")
@@ -394,85 +383,52 @@ class GlobusSearchQuery(BaseModel):
                 f"Expected input convertible to Sequence[GlobusFacet] one of {get_args(SupportedAsFacets)}, got {type(value)}"
             )
 
-    @field_validator("q")
-    @staticmethod
-    def convert_esg_seach_q_field_default(value: str | None) -> str | None:
-        """Convert the default ESG Search query to the default Globus Search query.
-
-        ESG Search (read: Solr)'s default query is '*:*' for 'all values in all fields'.
-        Globus Search doesn't handle this format, so we have to convert it to empty string for 'all.'
-
-        TODO: Globus docs say q is only required if there are no filters: https://docs.globus.org/api/search/reference/post_query/#gsearchrequest
-            Once the model can distinguish "queryable" fields from others (like limit, offset, etc),
-            set a @model_validator() to set q appropriately where there are/aren't filters.
-        """
-        return None if value in ("", "*", "*:*") else value
-
-    @field_validator("filters", mode="before")
-    @staticmethod
-    @validate_call
-    def convert_esg_seach_filters_field(value: SupportedAsFilters) -> Sequence[GlobusFilter]:
-        """Convert an ESG Search style fields dict to a list of GlobusFilter objects.
-
-        Parameters:
-        value (dict | list[GlobusFilter]): The input value to be converted. If it is a dictionary, it should have field
-            names as keys and values as lists of strings. If it is a list, it should contain instances of `GlobusFilter`.
-
-        Returns:
-        list[GlobusFilter]: A list of `GlobusFilter` objects, each representing a filter condition.
-
-        Raises:
-        ValueError: If the input value is neither a dictionary nor a list.
-
-        Note:
-        This method is used to convert the filters field in the ESG Search Query into a list of `GlobusFilter` objects.
-        It does not perform any actual search operations.
-        """
-        if is_sequence_of(value, GlobusFilter):
-            return value
-        elif isinstance(value, dict):
-            built_filters = []
-            for field, field_value in value.items():
-                # This is a serialized model
-                if isinstance(field_value, str):
-                    # If it's a comma separated string, split it and pass that as the values, otherwise a single-valued list of strings
-                    # Set the `type` to `match_any` so match result in the csv
-                    built_filters.append(
-                        GlobusMatchFilter(type="match_any", field_name=field, values=field_value.split(","))
-                    )
-                else:
-                    # If it's not a string, it Should(TM) already be a list, pass it as a `match_all` filter
-                    built_filters.append(GlobusMatchFilter(field_name=field, values=field_value))
-            return built_filters
-        else:
-            raise ValueError(  # pragma: no cover TODO: pytest.raises() masks this line so coverage doesn't think it was executed
-                f"Expected input convertible to list[GlobusFilter] one of {get_args(SupportedAsFilters)}, got {type(value)}"
-            )
-
     @classmethod
     def from_esg_search_query(cls, query: ESGSearchQuery) -> Self:
-        """Create a new instance of `GlobusSearchResult` from an `ESGSearchQuery`.
+        """Create a new instance of `GlobusSearchResult` from an `ESGSearchQuery`."""
+        # Note: due to a bug in FastAPI's dependency system (https://github.com/fastapi/fastapi/discussions/9595),
+        # all fields that aren't provided as query params are set to `None`, which causes Pydantic to mark those
+        # fields as having been manually set, so we can't rely on `query.model_fields_set` to distinguish between
+        # unset and supplied as null (None).
+        built_filters: list[GlobusFilter] = []
 
-        Parameters:
-        query (ESGSearchQuery): The `ESGSearchQuery` instance to use for creating the new instance.
+        if query.min_version or query.max_version:
+            built_filters.append(
+                GlobusRangeFilter(
+                    field_name="version",
+                    values=[GlobusRange(from_=query.min_version or "*", to=query.max_version or "*")],
+                )
+            )
 
-        Returns:
-        GlobusSearchResult: A new instance of `GlobusSearchResult` created from the provided `ESGSearchQuery`.
+        if query.from_ or query.to:
+            built_filters.append(
+                GlobusRangeFilter(
+                    field_name="_timestamp", values=[GlobusRange(from_=query.from_ or "*", to=query.to or "*")]
+                )
+            )
 
-        Raises:
-        ValueError: If the `query` instance is not valid.
+        for field, field_value in query.model_dump(exclude_none=True, include=query._queriable_fields()).items():
+            if isinstance(field_value, str):
+                # "foo,bar.baz" -> ["foo", "bar", "baz"]  --  "foo" -> ["foo"]
+                field_value: list[str] = field_value.split(",")
 
-        Note:
-        This method converts the `query` instance into a `GlobusSearchResult` instance by extracting the relevant fields and parameters. It does not perform any actual search operations.
-        """
-        return cls(
-            q=query.query,
-            advanced=True,
-            limit=query.limit,
-            offset=query.offset,
-            filters=query.model_dump(exclude_none=True, include=query._queriable_fields()),
-            facets=query.facets,
-        )
+            # If it's not a string, it Should(TM) already be a list
+            built_filters.append(GlobusMatchFilter(field_name=field, values=field_value))
+
+        constructed_fields = {}
+        if built_filters:
+            constructed_fields["filters"] = built_filters
+
+        for attr in ["limit", "offset", "facets"]:
+            if attr_value := getattr(query, attr, None):
+                constructed_fields[attr] = attr_value
+
+        # Although valid, Globus Search crashes with Metagrid's default query of `*`
+        # Only set the query if it's not `*`
+        if query.query and query.query != "*":
+            constructed_fields["q"] = query.query
+
+        return cls(**constructed_fields)
 
     version_: Literal["query#1.0.0"] = Field(default="query#1.0.0", alias="@version")
     """The version of the query format."""
@@ -480,9 +436,9 @@ class GlobusSearchQuery(BaseModel):
     """The search query."""
     advanced: bool = True
     """Whether or not to use advanced search."""
-    limit: int
+    limit: int = 10
     """The maximum number of results to return."""
-    offset: int
+    offset: int = Field(0, ge=0, le=9999)
     """The number of results to skip."""
 
     filters: SerializeAsAny[SupportedAsFilters] | None = None
@@ -528,39 +484,22 @@ class GlobusMetaResult(BaseModel):
 
 
 class GlobusBucket(BaseModel):
-    """Represents a bucket in a Globus Search result.
+    """Represents a bucket in a Globus Search result."""
 
-    Attributes:
-        value (str | dict[Literal["from", "to"], Any]): The value of the bucket.
-        count (int): The count of items in the bucket.
-    """
-
-    value: str | dict[Literal["from", "to"], Any]
+    value: str
     """The value of the bucket."""
     count: int
     """The count of items in the bucket."""
 
 
 class GlobusFacetResult(BaseModel):
-    """Represents a bucket in a Globus Search result.
-
-    Attributes:
-        name (str): The name of the facet.
-        value (float): The value of the facet.
-        buckets (list[GlobusBucket]]): A list of buckets associated with the facet.
-    """
+    """Represents a facet result in a Globus Search result."""
 
     name: str
     """The name of the facet."""
 
     value: float | None = None
-    """The value of the facet.
-
-    TODO: The docs aren't super clear that GFacetResult.value is only returned if the facet query was
-          a sum or avg facet. We need to determine if ESG Search supports these types and thus
-          whether we need to implement them.
-          ref: https://docs.globus.org/api/search/reference/post_query/#gfacetresult
-    """
+    """The value of the facet. Only returned if for `sum` and `avg` queries, which ESG Search doesn't support."""
 
     buckets: list[GlobusBucket]
     """A list of buckets associated with the facet."""
@@ -570,16 +509,6 @@ class GlobusSearchResult(BaseModel):
     """Represents a search result from the Globus platform.
 
     Ref: https://docs.globus.org/api/search/reference/post_query/#gsearchresult
-
-    Attributes:
-        gmeta (list[GlobusMetaResult]]): A list of metadata entries for the search result.
-        facet_results (list[GlobusFacetResult]] | None = None): A list of facet results for the search result.
-        offset (int): The offset of the search result.
-        count (int): The count of items in the search result.
-        total (int): The total number of items in the search result.
-        has_next_page (bool): A flag indicating whether there is a next page of search results.
-        datatype (Literal["GSearchResult"]): The data type of the search result.
-        version (Literal["2017-09-01"]): The version of the search result.
     """
 
     gmeta: list[GlobusMetaResult]
@@ -612,78 +541,11 @@ class GlobusSearchResult(BaseModel):
     A boolean flag indicating whether there is a next page of search results.
     """
 
-    ### WARNING: these attributes are shown in the examples of the Globus SDK
-    # docs (https://docs.globus.org/api/search/reference/post_query/#examples_10)
-    # but are not documented as part of the "spec" (such as it is...)
-    # They do not appear to return from SearchClient().post_query() so commenting them out for now.
-    # datatype: Literal["GSearchResult"] = Field(alias="@datatype")
-    """
-    A string literal representing the data type of the search result. Its value is always `"GSearchResult"`.
-    """
-
-    # version: Literal["2017-09-01"] = Field(alias="@version")
-    """
-    A string literal representing the version of the search result. Its value is always `"2017-09-01"`.
-    """
-
 
 class ESGSearchResultParams(BaseModel):
-    """Parameters for the ESG Search Result.
-
-    Attributes:
-        facet_field (None | list[str]): The field to use for faceting.
-        df (str): The default field to use for searching.
-        q_alt (str): The alternative query string.
-        indent (str): A boolean flag indicating whether to indent the JSON response.
-        echoParams (str): A boolean flag indicating whether to echo the parameters in the response.
-        fl (str): A comma-separated list of fields to include in the response.
-        start (Decimal): The starting index for the search results.
-        fq (SolrFQ): The list of Solr Facet Queries.
-        rows (Decimal): The maximum number of search results to return.
-        q (str): The query string to use for searching.
-        shards (Url): The URL of the Solr shards to use for searching.
-        tie (Decimal): The tie-breaking parameter for Solr faceting.
-        facet_limit (Decimal): The maximum number of facet values to return.
-        qf (str): The query field to use for searching.
-        facet_method (str): The method to use for faceting.
-        facet_mincount (Stringified[int]): The minimum count required for a facet value to be included in the response.
-        facet (LowerCased[Stringified[bool]]): A boolean flag indicating whether to include facet values in the response.
-        wt (Literal["json", "xml"]): The format of the response.
-        facet_sort (str): The sorting method to use for facet values.
-    """
+    """Represents the `params` field of an ESGSearch result."""
 
     model_config = ConfigDict(validate_default=True)
-
-    @field_validator("fq", mode="before")
-    @staticmethod
-    def convert_and_validate_fq(value: SupportedAsFQ) -> SolrFQ:
-        """Convert and validate the input for the `fq` field.
-
-        Parameters:
-        input (SupportedAsFQ): The input value to be converted and validated.
-
-        Returns:
-        SolrFQ: A SolrFQ object representing the list of Solr Facet Queries.
-
-        Raises:
-        ValueError: If the input value is not a list of Solr Facet Queries, or if it is not convertible to a SolrFQ object.
-
-        Note:
-        - If the input value is a string, it is split into a list of strings and then validated.
-        - If the input value is a list of strings, it is validated as a SolrFQ object.
-        - If the input value is an instance of `ESGSearchQuery`, it is converted to a SolrFQ object by first converting the queryable fields of the query into a list of strings, and then validating the resulting list.
-        """
-        if isinstance(value, str):
-            value = [atom.strip() for atom in value.split(",")]
-        if is_sequence_of(value, str):
-            return one_or_list(value)
-        elif isinstance(value, ESGSearchQuery):
-            fq_fields = value.model_dump(exclude_none=True, include=value._queriable_fields())
-            return one_or_list([format_fq_field(field) for field in fq_fields.items()])
-        else:
-            raise ValueError(  # pragma: no cover TODO: pytest.raises() masks this line so coverage doesn't think it was executed
-                f"Expected input convertible to SolrFQ one of {get_args(SupportedAsFQ)}, got {type(value)}"
-            )
 
     facet_field: None | list[str] = Field(alias="facet.field", default=None, exclude=True)
     """
@@ -695,7 +557,7 @@ class ESGSearchResultParams(BaseModel):
     """
     q_alt: str = Field(alias="q.alt", default="*:*")
     """The `q_alt` attribute is an optional string parameter that represents a Solr "alternative query" string. This attribute is used to provide an additional query string for the search operation. If not provided, the default value is "*:*", which means that all documents will be returned."""
-    indent: LowerCased[Stringified[bool]] = True
+    indent: LowerCased[bool] = True
     """
     The `indent` attribute is a boolean flag indicating whether to indent the JSON response. Its default value is `"true"`.
     """
@@ -707,11 +569,10 @@ class ESGSearchResultParams(BaseModel):
     """
     The `fl` attribute is a comma-separated list of fields to include in the response. Its default value is `"*,score"`.
     """
-    start: Decimal
+    start: Stringified[int]
     """
     The `start` attribute is an integer representing the starting index for the search results. Its default value is `0`.
     """
-
     fq: SolrFQ
     """
     The `fq` attribute is a `SolrFQ` object representing the list of Solr Facet Queries.
@@ -725,8 +586,7 @@ class ESGSearchResultParams(BaseModel):
         ]
         ```
     """
-
-    rows: Decimal = cast("Decimal", 10)
+    rows: Stringified[int] = 10
     """
     The `rows` attribute is an integer representing the maximum number of search results to return. Its default value is `10`.
     """
@@ -738,11 +598,11 @@ class ESGSearchResultParams(BaseModel):
     """
     The `shards` attribute is a `Url` object representing the URL of the Solr shards to use for searching. Its default value is `"esgf-data-node-solr-query:8983/solr/datasets"`.
     """
-    tie: Decimal = cast("Decimal", 0.01)
+    tie: Stringified[float] = 0.01
     """
     The `tie` attribute is a float representing the tie-breaking parameter for Solr faceting. Its default value is `0.01`.
     """
-    facet_limit: Decimal = Field(alias="facet.limit", default=cast("Decimal", -1))
+    facet_limit: Stringified[int] = Field(alias="facet.limit", default=-1)
     """
     The `facet_limit` attribute is an integer representing the maximum number of facet values to return. Its default value is `-1`, which means that all facet values will be returned.
     """
@@ -754,11 +614,11 @@ class ESGSearchResultParams(BaseModel):
     """
     The `facet_method` attribute is a string representing the method to use for faceting. Its default value is `"enum"`.
     """
-    facet_mincount: Decimal = Field(alias="facet.mincount", default=cast("Decimal", 1))
+    facet_mincount: Stringified[int] = Field(alias="facet.mincount", default=1)
     """
     The `facet_mincount` attribute is an integer representing the minimum count required for a facet value to be included in the response. Its default value is `1`.
     """
-    facet: LowerCased[Stringified[bool]] = True
+    facet: LowerCased[bool] = True
     """
     The `facet` attribute is a boolean flag indicating whether to include facet values in the response. Its default value is `"true"`.
     """
@@ -786,20 +646,6 @@ class ESGSearchHeader(BaseModel):
 class ESGSearchResult(BaseModel):
     """Represents a search result from ESG Search."""
 
-    @field_validator("docs", mode="before")
-    @staticmethod
-    def convert_to_docs(value: SupportedAsSolrDocs) -> Sequence[SolrDoc]:
-        """Convert a list of GlobusMetaResults to a list of Solr docs."""
-        if is_sequence_of(value, dict):
-            return value
-        elif is_sequence_of(value, GlobusMetaResult):
-            # Globus Search doesn't return score, so fake it for consistency
-            return [{**record.entries[0].content | {"id": record.subject, "score": 0.5}} for record in value]
-        else:
-            raise ValueError(  # pragma: no cover TODO: pytest.raises() masks this line so coverage doesn't think it was executed
-                f"Expected input convertible to SolrDoc one of {get_args(SupportedAsSolrDocs)}, got {type(value)}"
-            )
-
     numFound: int
     """Number of documents found."""
     start: int
@@ -819,7 +665,7 @@ class ESGFSearchFacetResult(BaseModel):
 
     facet_queries: dict = {}
     """Facet queries for the facet result."""
-    facet_fields: dict[str, tuple[str | int, ...]] = {}
+    facet_fields: ESGSearchFacetField = {}
     """Facet fields for the facet result."""
     facet_ranges: dict = {}
     """Facet ranges for the facet result."""
@@ -828,45 +674,53 @@ class ESGFSearchFacetResult(BaseModel):
     facet_heatmaps: dict = {}
     """Facet heatmaps for the facet result."""
 
+    @classmethod
+    def from_globus_facet_result(cls, globus_facets: list[GlobusFacetResult] | None) -> Self:
+        """Instantiate this class from a list of `GlobusFacetResult`s."""
+        facet_fields: ESGSearchFacetField = {}
+
+        # When no facets are requested, Globus doesn't return the field -- `or []` avoids iterating over None
+        for facet in globus_facets or []:
+            facet_fields[facet.name] = tuple(attr for bucket in facet.buckets for attr in (bucket.value, bucket.count))
+        return cls(facet_fields=facet_fields)
+
 
 class ESGSearchResponse(BaseModel):
     """Represents a response from ESG Search."""
 
-    @field_validator("facet_counts", mode="before")
-    @staticmethod
-    def convert_to_esg_search_facet_counts(value: SupportedAsFacets) -> ESGFSearchFacetResult:
-        """Convert a list of GlobusFacetResults to a list of ESGSearchFacetCounts.
+    @classmethod
+    def from_results(cls, q: ESGSearchQuery, q_time: int, result: GlobusSearchResult) -> Self:
+        """Instantiate this class from an `ESGSearchQuery`, query time, and `GlobusSearchResult`."""
+        constraints = []
 
-        Parameters:
-        value (list[dict[str, Any]] | list[GlobusFacetResult] | None): The input value to be converted.
+        if q.query:
+            constraints.append(q.query)
+        if q.from_ or q.to:
+            lower_bound = q.from_.strftime("%Y-%m-%dT%H:%M:%SZ") if q.from_ else "*"
+            upper_bound = q.to.strftime("%Y-%m-%dT%H:%M:%SZ") if q.to else "*"
+            constraints.append(f"_timestamp:[{lower_bound} TO {upper_bound}]")
+        if q.min_version:
+            constraints.append(f"version:[{q.min_version} TO *]")
+        if q.max_version:
+            constraints.append(f"version:[* TO {q.max_version}]")
 
-        Returns:
-        ESGFSearchFacetResult: A list of ESGSearchFacetCounts.
-
-        Raises:
-        ValueError: If the input value is not a list of GlobusFacetResults.
-
-        Note:
-        - If the input value is `None`, an empty ESGSearchFacetResult object is returned.
-        - If the input value is a list of dictionaries, it is assumed that the list represents a list of facet results from Globus Search.
-        """
-        if isinstance(value, dict):
-            return ESGFSearchFacetResult.model_validate(value)
-        if isinstance(value, ESGFSearchFacetResult):
-            return value
-        if is_sequence_of(value, GlobusFacetResult):
-            facet_fields = defaultdict(list)
-            for facet in value:
-                facet_fields[facet.name].extend(
-                    [attr for bucket in facet.buckets for attr in (bucket.value, bucket.count)]
-                )
-            return ESGFSearchFacetResult.model_validate({"facet_fields": facet_fields})
-        if value is None:
-            # Globus facet_results can be `None` if there are no facets, but ESG Search
-            # returns empty dicts if there are no facets.
-            return ESGFSearchFacetResult()
-        raise ValueError(
-            f"Expected input convertible to ESGFSearchFacetResult one of {get_args(SupportedAsFacets)}, got {type(value)}"
+        return cls(
+            responseHeader=ESGSearchHeader(
+                QTime=q_time,
+                params=ESGSearchResultParams(
+                    q=" AND ".join(constraints) or "*:*",
+                    start=q.offset,
+                    rows=q.limit,
+                    fq=fq_field_from_esg_search_query(q),
+                    shards=Url(f"esgf-data-node-solr-query:8983/solr/{q.type.lower()}s"),
+                ),
+            ),
+            response=ESGSearchResult(
+                numFound=result.total,
+                start=result.offset,
+                docs=solr_docs_from_globus_meta_results(result.gmeta),
+            ),
+            facet_counts=ESGFSearchFacetResult.from_globus_facet_result(result.facet_results),
         )
 
     responseHeader: ESGSearchHeader

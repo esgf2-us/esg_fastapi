@@ -18,7 +18,7 @@ EtagHeader = dict[EtagMatchType, str]
 @given(parse("that the client provides an <{header_match}> etag"), target_fixture="etag_header")
 def create_request(header_match: EtagMatchType) -> EtagHeader:
     """Creates an ETag header dict with the value of the default empty query."""
-    return {header_match: "751ef835d1fcb35932af51f937204956"}
+    return {header_match: "407815320a2e84179231891ac0d66e37"}
 
 
 @when("the result for that etag is cached")

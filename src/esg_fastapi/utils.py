@@ -3,10 +3,15 @@
 import logging
 from collections.abc import Sequence
 from importlib.metadata import metadata as get_metadata
-from typing import Any
+from typing import TYPE_CHECKING, Any, TypeGuard
 
 from annotated_types import T
 from opentelemetry import trace
+
+if TYPE_CHECKING:  # pragma no cover -- avoids circular import issue
+    from esg_fastapi.api.models import ESGSearchQuery, GlobusMetaResult
+    from esg_fastapi.api.types import SolrDoc
+
 
 metadata = get_metadata("esg_fastapi")
 
@@ -102,6 +107,43 @@ def format_fq_field(field: tuple[str, Any]) -> str:
     return " || ".join(
         [f"{key}:{quote_str(term) if key not in non_quoted_fields else term}" for term in ensure_list(value)]
     )
+
+
+def fq_field_from_esg_search_query(query: "ESGSearchQuery") -> str | Sequence[str]:
+    """Given an `ESGSearchQuery`, generate and return a Solr `fq` field."""
+    fq_fields = query.model_dump(exclude_none=True, include=query._queriable_fields())
+    return one_or_list([format_fq_field(field) for field in fq_fields.items()])
+
+
+def solr_docs_from_globus_meta_results(results: list["GlobusMetaResult"]) -> list["SolrDoc"]:
+    return [{**record.entries[0].content | {"id": record.subject, "score": 0.5}} for record in results]
+
+
+def is_sequence_of(value: object, value_type: type[T]) -> TypeGuard[Sequence[T]]:
+    """Check if a given value is a sequence of a specific type.
+
+    Parameters:
+    value (object): The value to be checked.
+    value_type (type[T]): The type of the elements in the sequence.
+
+    Returns:
+    TypeGuard[Sequence[T]]: A type guard that returns `True` if the given value is a sequence of the specified type, and `False` otherwise.
+
+    Raises:
+    TypeError: If the `value_type` parameter is not a type.
+
+    Example:
+    ```python
+    from typing import List, Dict
+
+    # Check if a list is a sequence of integers
+    is_sequence_of([1, 2, 3], int)  # Returns True
+
+    # Check if a dictionary is a sequence of integers
+    is_sequence_of({1: 'one', 2: 'two'}, int)  # Returns False
+    ```
+    """
+    return isinstance(value, Sequence) and all(isinstance(i, value_type) for i in value)
 
 
 def print_loggers(verbose: bool = True) -> None:  # pragma: no cover -- not used yet

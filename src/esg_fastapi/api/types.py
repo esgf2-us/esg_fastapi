@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from datetime import datetime
 from typing import TYPE_CHECKING, Annotated, Any, ForwardRef, Literal, TypedDict
 
 from annotated_types import T
@@ -16,13 +17,13 @@ else:
     GlobusFilter = ForwardRef("GlobusFilter")
 
 
-Stringified = Annotated[T, AfterValidator(lambda x: str(x))]
+Stringified = Annotated[T, PlainSerializer(str)]
 """String representation of the parameterized type."""
 
 MultiValued = Annotated[list[T], BeforeValidator(ensure_list), Query()]
 """Solr MultiValued Field of the parameterized type."""
 
-LowerCased = Annotated[T, PlainSerializer(lambda x: x.lower())]
+LowerCased = Annotated[T, PlainSerializer(lambda x: str(x).lower())]
 """Lower-case string representation of the parameterized type."""
 
 SupportedAsFacets = str | Sequence[GlobusFacet]
@@ -34,14 +35,15 @@ SupportedAsFilters = dict | Sequence[GlobusFilter]
 SolrFQ = str | Sequence[str]
 """Presentation type for the Solr `fq` field."""
 
-SupportedAsFQ = ESGSearchQuery | SolrFQ
-"""Represents types convertable to SolrFQ objects."""
-
 # TODO: we should be able to better specify the typing of docs
 SolrDoc = dict[str, Any]
 
-SupportedAsSolrDocs = SolrDoc | Sequence[GlobusMetaResult]
-"""Represents types convertable to a list of GlobusMetaResult objects."""
+SolrDatetime = Annotated[datetime, PlainSerializer(lambda x: x.strftime("%Y-%m-%dT%H:%M:%SZ")), Query()]
+
+FacetName = str
+FacetValue = str
+FacetValueCount = int
+ESGSearchFacetField = dict[FacetName, tuple[FacetValue | FacetValueCount, ...]]
 
 
 class GlobusToken(TypedDict):

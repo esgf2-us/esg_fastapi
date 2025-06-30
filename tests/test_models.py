@@ -4,10 +4,10 @@ import pytest
 from pytest import raises
 
 from esg_fastapi.api.models import (
-    NON_QUERIABLE_FIELDS,
     ESGFSearchFacetResult,
     ESGSearchHeader,
     ESGSearchQuery,
+    ESGSearchQueryBase,
     ESGSearchResponse,
     ESGSearchResult,
     ESGSearchResultParams,
@@ -28,7 +28,6 @@ goal_fqs = [f'{k}:"{v}"' for k, v in zip(test_attrs, test_values)]
 @pytest.mark.parametrize(
     ("attr",    "source",             "expectation",      "comparison"), [
     # ---------------------------------------------------------
-    ("filters", filter_dict,         does_not_raise(),   goal_globus_filters),
     ("filters", goal_globus_filters, does_not_raise(),   goal_globus_filters),
     ("filters", object(),            raises(ValueError), goal_globus_filters),
     ("facets",  facet_str,           does_not_raise(),   goal_globus_facets),
@@ -43,14 +42,20 @@ def test_GlobusSearchQuery_facet_creation(attr, source, expectation, comparison)
         assert getattr(query, attr) == comparison
 
 
+@pytest.mark.parametrize(("query_string", "should_be_set"), [("*", False), ("*:*", True)])
+def test_GlobusSearchQuery_from_esg_search_query_skips_star(query_string: str, should_be_set: bool) -> None:
+    """Do not include query when constructing `GlobusSearchQuery` from `ESGSearchQuery` if query is `*`."""
+    query = GlobusSearchQuery.from_esg_search_query(ESGSearchQuery(query=query_string))
+    is_set = "q" in query.model_fields_set
+
+    assert is_set == should_be_set
+
+
 @pytest.mark.parametrize(
     ("attr",    "source",                                                  "expectation",             "comparison"), [
     # -----------------------------------------------------------------------------------------------------------------
     ("fq", 'activity_id:"frogblast"',                                     does_not_raise(),  'activity_id:"frogblast"'),
-    ("fq", 'activity_id:"frogblast", data_node:"the vent"',               does_not_raise(), ['activity_id:"frogblast"', 'data_node:"the vent"']),
     ("fq", ['activity_id:"frogblast"', 'data_node:"the vent"'],           does_not_raise(), ['activity_id:"frogblast"', 'data_node:"the vent"']),
-    ("fq", ESGSearchQuery(activity_id="frogblast"),                       does_not_raise(), ['activity_id:"frogblast"', 'type:Dataset']),
-    ("fq", ESGSearchQuery(activity_id="frogblast", data_node="the vent"), does_not_raise(), ['activity_id:"frogblast"', 'data_node:"the vent"', 'type:Dataset']),
     ],
 )  # fmt: skip
 def test_ESGSearchResult_creation(attr, source, expectation, comparison) -> None:
@@ -81,4 +86,4 @@ def test_ESGSearchResponse_facet_counts_creation(source, output, expectation) ->
 
 def test_queriable_fields() -> None:
     """Non-queriable fields should be excluded from the property."""
-    assert all(field not in ESGSearchQuery._queriable_fields() for field in NON_QUERIABLE_FIELDS)
+    assert all(field not in ESGSearchQuery._queriable_fields() for field in ESGSearchQueryBase.model_fields)
