@@ -1,11 +1,12 @@
 from collections.abc import Sequence
+from datetime import date
 from typing import TYPE_CHECKING, Annotated, Any, ForwardRef, Literal, TypedDict
 
 from annotated_types import T
 from fastapi import Query
-from pydantic import AfterValidator, BeforeValidator, PlainSerializer
+from pydantic import AfterValidator, BeforeValidator, PlainSerializer, PlainValidator
 
-from esg_fastapi.utils import ensure_list
+from esg_fastapi.utils import ensure_list, validate_version_date
 
 if TYPE_CHECKING:  # pragma: no cover
     from .models import ESGSearchQuery, GlobusFacet, GlobusFilter, GlobusMetaResult
@@ -42,6 +43,12 @@ SolrDoc = dict[str, Any]
 
 SupportedAsSolrDocs = SolrDoc | Sequence[GlobusMetaResult]
 """Represents types convertable to a list of GlobusMetaResult objects."""
+
+VersionDate = Annotated[date, PlainValidator(validate_version_date)]
+"""Date from the `version` field in YYYMMDD format."""
+
+GlobusRangeDate = Annotated[date, PlainSerializer(lambda x: x.strftime("%Y-%m-%d"))]
+"""Date in the format expected by a Globus Search Range Filter (https://docs.globus.org/api/search/reference/post_query/#gfilterrange)."""
 
 
 class GlobusToken(TypedDict):

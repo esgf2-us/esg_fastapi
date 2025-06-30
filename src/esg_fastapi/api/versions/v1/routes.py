@@ -2,12 +2,11 @@
 
 import logging
 from collections.abc import Generator
-from contextvars import ContextVar
-from typing import Any
+from typing import Annotated, Any
 
 import httpx
 import pyroscope
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
@@ -45,24 +44,23 @@ def app_factory() -> FastAPI:
     return app
 
 
-tracing_tags = ContextVar("tracing_tags")
-
-
-def query_instrumentor(query: ESGSearchQuery = Depends()) -> Generator[ESGSearchQuery, Any, None]:
+def instrument_query(query: ESGSearchQuery = Depends()) -> Generator[ESGSearchQuery, Any, None]:
     """Instruments the query with tracing tags and pyroscope tags."""
-    current_span: trace.Span = trace.get_current_span()
-    tracing_tags.set({key: str(value) for key, value in query.model_dump(exclude_none=True).items()})
-    current_span.set_attributes(tracing_tags.get())
-    with pyroscope.tag_wrapper(tracing_tags.get()):
+    tags = {key: str(value) for key, value in query.model_dump(exclude_none=True).items()}
+    trace.get_current_span().set_attributes(tags)
+    with pyroscope.tag_wrapper(tags):
         yield query
 
 
-TrackedESGSearchQuery: ESGSearchQuery = Depends(query_instrumentor)
+QueryInstrumentor = Depends(instrument_query)
 
 
-def cache_control_response(response: Response) -> None:
+def set_cache_control_headers(response: Response) -> None:
     """Set the cache-control directives for the response."""
     response.headers["cache-control"] = "public max-age=300 stale-while-revalidate=300 stale-if-error=300"
+
+
+CacheControlHeaders = Depends(set_cache_control_headers)
 
 
 def validate_cache_request_directives(response: httpx.Response, headers: Headers) -> None:
@@ -89,13 +87,13 @@ WITHOUT_FACETS = {"facets": []}
 
 @router.get("/search")
 async def search(request: Request) -> RedirectResponse:
-    """Redirects to the root path esgf-pyclient compatibility."""
+    """Redirects to the root path for esgf-pyclient compatibility."""
     root = request.scope.get("root_path") or "/"
     return RedirectResponse(root, status_code=status.HTTP_308_PERMANENT_REDIRECT)
 
 
-@router.get("/", response_model=ESGSearchResponse, dependencies=[Depends(cache_control_response)])
-async def search_globus(request: Request, q: ESGSearchQuery = TrackedESGSearchQuery) -> ESGSearchResponse:
+@router.get("/", response_model=ESGSearchResponse, dependencies=[CacheControlHeaders, QueryInstrumentor])
+async def search_globus(request: Request, q: Annotated[ESGSearchQuery, Query()]) -> ESGSearchResponse:
     """This function performs a search using the Globus API based on the provided ESG search query.
 
     Parameters:
