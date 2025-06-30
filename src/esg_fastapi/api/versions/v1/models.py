@@ -36,9 +36,10 @@ from pydantic import (
     field_validator,
     validate_call,
 )
-from pydantic_core import Url
+from pydantic_core import PydanticUndefined, Url
 
 from esg_fastapi.api.versions.v1.types import (
+    GlobusRangeDate,
     LowerCased,
     MultiValued,
     SolrDoc,
@@ -48,6 +49,7 @@ from esg_fastapi.api.versions.v1.types import (
     SupportedAsFilters,
     SupportedAsFQ,
     SupportedAsSolrDocs,
+    VersionDate,
 )
 from esg_fastapi.utils import (
     ensure_list,
@@ -64,7 +66,7 @@ class ESGSearchQuery(BaseModel):
     TODO: Build this list dynamically from Solr's luke API to ensure all possible params are captured.
     """
 
-    model_config = ConfigDict(validate_default=True)
+    model_config = ConfigDict(validate_default=True, extra="forbid")
 
     id: str | None = None
     dataset_id: str | None = None
@@ -293,6 +295,11 @@ class ESGSearchQuery(BaseModel):
     facets: Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"\w+(,\w+)*?")] | None = None
     """A comma-separated list of field names to facet on."""
 
+    min_version: VersionDate | None = None
+    """Constrain query results to `version` field after this date."""
+    max_version: VersionDate | None = None
+    """Constrain query results to `version` field before this date."""
+
     @classmethod
     def _queriable_fields(cls) -> set[str]:
         """All fields that are queriable in Solr."""
@@ -306,7 +313,7 @@ class GlobusFilter(BaseModel):
     ref: https://docs.globus.org/api/search/reference/post_query/#gfilter
     """
 
-    type: Literal["match_all", "match_any"]
+    type: Literal["match_all", "match_any", "range"]
     """The type of filter to apply."""
 
 
@@ -319,6 +326,24 @@ class GlobusMatchFilter(GlobusFilter):
     """The name of the field to filter on."""
     # TODO: restrict this to only known fields (maybe after refactor to pull fields live from Solr)
     values: Annotated[Sequence[str | bool], BeforeValidator(ensure_list)]
+    """The values to filter on."""
+
+
+class GlobusRange(BaseModel):
+    model_config = ConfigDict(serialize_by_alias=True)
+
+    from_: GlobusRangeDate | Literal["*"] = Field("*", serialization_alias="from")
+    to: GlobusRangeDate | Literal["*"] = Field("*")
+
+
+class GlobusRangeFilter(GlobusFilter):
+    """Globus Filter Specialization for Range type filters."""
+
+    type: Literal["range"] = "range"
+    """The type of filter to apply."""
+    field_name: str
+    """The name of the field to filter on."""
+    values: Sequence[GlobusRange]
     """The values to filter on."""
 
 
@@ -431,7 +456,14 @@ class GlobusSearchQuery(BaseModel):
         if is_sequence_of(value, GlobusFilter):
             return value
         elif isinstance(value, dict):
-            built_filters = []
+            built_filters: list[GlobusFilter] = []
+
+            min_version = value.pop("min_version", PydanticUndefined)
+            max_version = value.pop("max_version", PydanticUndefined)
+            if min_version != PydanticUndefined or max_version != PydanticUndefined:
+                built_filters.append(
+                    GlobusRangeFilter(field_name="version", values=[GlobusRange(from_=min_version, to=max_version)])
+                )
             for field, field_value in value.items():
                 # This is a serialized model
                 if isinstance(field_value, str):

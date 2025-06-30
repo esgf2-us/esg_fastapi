@@ -1,12 +1,11 @@
 """Test suite for the utils module.
 
-This module contains various utility functions that do not fit well in other modules. The functions in this module are:
-
-- `type_of(baseclass: T) -> T`: Inherit from `baseclass` only for type checking purposes.
-- `is_list(value: T) -> TypeGuard[list]`: TypeGuard based on whether the value is a list.
-- `one_or_list(value: list[T] | T) -> T | list[T]`: Unwrap length 1 lists.
-- `ensure_list(value: T) -> T | list[T]`: If value is a list, return as is. Otherwise, wrap it in a list.
+This module contains various utility functions that do not fit well in other modules.
 """
+
+from datetime import date
+
+import pytest
 
 
 def test_one_or_list_single_item() -> None:
@@ -77,3 +76,20 @@ def test_get_current_trace_id() -> None:
 
     # Call the function and check the result
     assert get_current_trace_id() == trace.format_trace_id(mock_trace_id)
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["20250120", date(2025, 6, 1)],
+)
+def test_validate_version_date(value: date | str) -> None:
+    from esg_fastapi.utils import validate_version_date
+
+    assert isinstance(validate_version_date(value), date)
+
+
+def test_validate_version_date_invalid_raises() -> None:
+    from esg_fastapi.utils import validate_version_date
+
+    with pytest.raises(ValueError, match="time data 'XXXX' does not match format '%Y%m%d'"):
+        assert isinstance(validate_version_date("XXXX"), date)

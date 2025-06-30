@@ -2,6 +2,7 @@
 
 import logging
 from collections.abc import Sequence
+from datetime import date, datetime
 from importlib.metadata import metadata as get_metadata
 from typing import Any
 
@@ -102,6 +103,17 @@ def format_fq_field(field: tuple[str, Any]) -> str:
     return " || ".join(
         [f"{key}:{quote_str(term) if key not in non_quoted_fields else term}" for term in ensure_list(value)]
     )
+
+
+def validate_version_date(value: str | date) -> date:
+    """Parse a date string of the format YYYYMMDD."""
+    if isinstance(value, date):
+        return value
+
+    if isinstance(value, str):
+        return datetime.strptime(value, "%Y%m%d").date()
+
+    raise ValueError  # pragma: no cover TODO: pytest.raises() masks this line so coverage doesn't think it was executed
 
 
 def print_loggers(verbose: bool = True) -> None:  # pragma: no cover -- not used yet

@@ -1,0 +1,15 @@
+{
+  "python-envs.pythonProjects": [
+    {
+      "path": "src",
+      "envManager": "ms-python.python:venv",
+      "packageManager": "ms-python.python:pip",
+      "workspace": "esg_fastapi"
+    },
+    {
+      "path": "",
+      "envManager": "ms-python.python:venv",
+      "packageManager": "ms-python.python:pip"
+    }
+  ]
+}
