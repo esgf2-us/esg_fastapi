@@ -17,3 +17,9 @@ Feature: ESG Search Request/Response parity
             | minimal_response.json          |
             | multiple_projects.json         |
             | multiple_data_nodes.json       |
+            | min_version_query.json         |
+            | max_version_query.json         |
+            | min_and_max_version_query.json |
+            | from_query.json                |
+            | to_query.json                  |
+            | from_and_to_query.json         |

@@ -1,12 +1,11 @@
 """Test suite for the utils module.
 
-This module contains various utility functions that do not fit well in other modules. The functions in this module are:
-
-- `type_of(baseclass: T) -> T`: Inherit from `baseclass` only for type checking purposes.
-- `is_list(value: T) -> TypeGuard[list]`: TypeGuard based on whether the value is a list.
-- `one_or_list(value: list[T] | T) -> T | list[T]`: Unwrap length 1 lists.
-- `ensure_list(value: T) -> T | list[T]`: If value is a list, return as is. Otherwise, wrap it in a list.
+This module contains various utility functions that do not fit well in other modules.
 """
+
+import pytest
+
+from esg_fastapi.api.models import ESGSearchQuery
 
 
 def test_one_or_list_single_item() -> None:
@@ -77,3 +76,29 @@ def test_get_current_trace_id() -> None:
 
     # Call the function and check the result
     assert get_current_trace_id() == trace.format_trace_id(mock_trace_id)
+
+
+@pytest.mark.parametrize(
+    ("search_query", "expectation"),
+    [
+        ({"type": "Dataset", "project": "CMIP6", "latest": True}, ["type:Dataset", 'project:"CMIP6"', "latest:True"]),
+        ({"type": "Dataset"}, "type:Dataset"),
+        (
+            {
+                "type": "Dataset",
+                "project": "CMIP6",
+                "data_node": "esgf-data1.llnl.gov,esgf-node.ornl.gov,eagle.alcf.anl.gov",
+            },
+            [
+                "type:Dataset",
+                'project:"CMIP6"',
+                'data_node:"esgf-data1.llnl.gov" || data_node:"esgf-node.ornl.gov" || data_node:"eagle.alcf.anl.gov"',
+            ],
+        ),
+    ],
+)
+def test_fq_field_from_esg_search_query(search_query, expectation) -> None:
+    from esg_fastapi.utils import fq_field_from_esg_search_query
+
+    q = ESGSearchQuery(**search_query)
+    assert sorted(fq_field_from_esg_search_query(q)) == sorted(expectation)
