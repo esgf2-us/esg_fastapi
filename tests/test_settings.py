@@ -15,15 +15,6 @@ def test_settings_is_usable() -> None:
     assert settings.globus.search_index is not None
 
 
-# TODO: move this somewhere sensible
-def test_app_factory_instruments_app() -> None:
-    """The created app is marked as insturmented by the FastAPIInstrumentor."""
-    from esg_fastapi.api.versions.v1.routes import app_factory
-
-    app = app_factory()
-    assert app._is_instrumented_by_opentelemetry is True
-
-
 def test_OTELSettings_instruments_logger(mocker: MockFixture, monkeypatch: pytest.MonkeyPatch) -> None:
     """Logging is intrumented by settings."""
     mock_record_factory = mocker.Mock()

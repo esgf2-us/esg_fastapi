@@ -7,15 +7,15 @@ from pytest_mock import MockFixture
 from respx import MockRouter
 
 from esg_fastapi import settings
-from esg_fastapi.api.versions.v1.globus import (
+from esg_fastapi.api.globus import (
     FastAPIWithSearchClient,
     ThinSearchClient,
     find_search_token,
     keep_token_fresh,
     token_renewal_watchdog,
 )
-from esg_fastapi.api.versions.v1.models import GlobusSearchQuery
-from esg_fastapi.api.versions.v1.types import GlobusToken, GlobusTokenResponse
+from esg_fastapi.api.models import GlobusSearchQuery
+from esg_fastapi.api.types import GlobusToken, GlobusTokenResponse
 
 
 @pytest.fixture
@@ -209,9 +209,9 @@ async def test_token_renewal_watchdog_with_credentials(mocker: MagicMock) -> Non
     """Watchdog renews the access token and schedules the next renewal 1min before expiration."""
     mocker.patch.object(settings.globus, "client_id", "client_id")
     mocker.patch.object(settings.globus, "client_secret", "client_secret")
-    mock_renewer = mocker.patch("esg_fastapi.api.versions.v1.globus.keep_token_fresh")
+    mock_renewer = mocker.patch("esg_fastapi.api.globus.keep_token_fresh")
     mock_app = MagicMock(spec=FastAPIWithSearchClient, globus_client=MagicMock(spec=ThinSearchClient))
-    mock_scheduler = mocker.patch("esg_fastapi.api.versions.v1.globus.asyncio.create_task")
+    mock_scheduler = mocker.patch("esg_fastapi.api.globus.asyncio.create_task")
 
     async with token_renewal_watchdog(mock_app):
         pass
@@ -225,9 +225,9 @@ async def test_token_renewal_watchdog_without_credentials(mocker: MagicMock) -> 
     """Watchdog does not attempt to renew if app credentials are not set."""
     mocker.patch.object(settings.globus, "client_id", None)
     mocker.patch.object(settings.globus, "client_secret", None)
-    mock_renewer = mocker.patch("esg_fastapi.api.versions.v1.globus.keep_token_fresh")
+    mock_renewer = mocker.patch("esg_fastapi.api.globus.keep_token_fresh")
     mock_app = MagicMock(spec=FastAPIWithSearchClient, globus_client=MagicMock(spec=ThinSearchClient))
-    mock_scheduler = mocker.patch("esg_fastapi.api.versions.v1.globus.asyncio.create_task")
+    mock_scheduler = mocker.patch("esg_fastapi.api.globus.asyncio.create_task")
 
     async with token_renewal_watchdog(mock_app):
         pass

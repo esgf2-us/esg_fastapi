@@ -3,7 +3,7 @@ from contextlib import nullcontext as does_not_raise
 import pytest
 from pytest import raises
 
-from esg_fastapi.api.versions.v1.models import (
+from esg_fastapi.api.models import (
     NON_QUERIABLE_FIELDS,
     ESGFSearchFacetResult,
     ESGSearchHeader,

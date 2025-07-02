@@ -15,8 +15,8 @@ from opentelemetry import trace
 from starlette import status
 
 from esg_fastapi import settings
-from esg_fastapi.api.versions.v1.models import GlobusSearchQuery
-from esg_fastapi.api.versions.v1.types import GlobusToken, GlobusTokenResponse
+from esg_fastapi.api.models import GlobusSearchQuery
+from esg_fastapi.api.types import GlobusToken, GlobusTokenResponse
 from esg_fastapi.observability.metrics import CACHE_HITS
 from esg_fastapi.utils import get_current_trace_id
 

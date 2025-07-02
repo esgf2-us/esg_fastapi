@@ -18,7 +18,7 @@ def test_cache_hits_are_tracked(test_client: TestClient, monkeypatch: pytest.Mon
         documentation="",
         registry=CollectorRegistry(),
     )
-    monkeypatch.setattr("esg_fastapi.api.versions.v1.globus.CACHE_HITS", mock_metric)
+    monkeypatch.setattr("esg_fastapi.api.globus.CACHE_HITS", mock_metric)
 
     # Prime the cache
     _ = test_client.get("/")
