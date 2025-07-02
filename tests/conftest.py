@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from respx import MockRouter
 
 from esg_fastapi.api.main import app_factory
-from esg_fastapi.api.versions.v1.models import GlobusMetaEntry, GlobusMetaResult, GlobusSearchResult
+from esg_fastapi.api.models import GlobusMetaEntry, GlobusMetaResult, GlobusSearchResult
 
 
 @pytest.fixture(autouse=True)

@@ -9,7 +9,7 @@ from pytest_bdd import given, scenarios, then, when
 from pytest_bdd.parsers import parse
 from respx import MockRouter
 
-from esg_fastapi.api.versions.v1.models import ESGSearchResponse, GlobusSearchQuery, GlobusSearchResult
+from esg_fastapi.api.models import ESGSearchResponse, GlobusSearchQuery, GlobusSearchResult
 
 scenarios("ESGSearch_Parity")
 

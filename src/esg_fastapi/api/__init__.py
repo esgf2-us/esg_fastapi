@@ -1,1 +1,1 @@
-"""The main package for the ESG FastAPI service."""
+"""The main package for the ESGF 1.5 Bridge API service."""

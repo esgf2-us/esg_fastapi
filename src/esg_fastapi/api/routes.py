@@ -5,12 +5,12 @@ from collections.abc import Generator
 from contextvars import ContextVar
 from typing import Any
 
+from fastapi.datastructures import URL
 import httpx
 import pyroscope
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from opentelemetry import trace
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from starlette import status
 from starlette.datastructures import Headers
 
@@ -24,25 +24,6 @@ from .models import (
 logger = logging.getLogger()
 
 router = APIRouter()
-
-
-def app_factory() -> FastAPI:
-    app = FastAPI(
-        version="v1",
-        title="title",
-        summary="summary",
-        description="description",
-        openapi_tags=[
-            {
-                "name": "v1",
-                "description": "description",
-            },
-        ],
-    )
-    app.include_router(router)
-    app.router.tags = ["v1"]
-    FastAPIInstrumentor().instrument_app(app)
-    return app
 
 
 tracing_tags = ContextVar("tracing_tags")
@@ -90,11 +71,11 @@ WITHOUT_FACETS = {"facets": []}
 @router.get("/search")
 async def search(request: Request) -> RedirectResponse:
     """Redirects to the root path esgf-pyclient compatibility."""
-    root = request.scope.get("root_path") or "/"
-    return RedirectResponse(root, status_code=status.HTTP_308_PERMANENT_REDIRECT)
+    destination = request.url_for("root").include_query_params(**request.query_params)
+    return RedirectResponse(destination, status_code=status.HTTP_308_PERMANENT_REDIRECT)
 
 
-@router.get("/", response_model=ESGSearchResponse, dependencies=[Depends(cache_control_response)])
+@router.get("/", name="root", response_model=ESGSearchResponse, dependencies=[Depends(cache_control_response)])
 async def search_globus(request: Request, q: ESGSearchQuery = TrackedESGSearchQuery) -> ESGSearchResponse:
     """This function performs a search using the Globus API based on the provided ESG search query.
 

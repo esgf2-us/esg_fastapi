@@ -38,7 +38,7 @@ from pydantic import (
 )
 from pydantic_core import Url
 
-from esg_fastapi.api.versions.v1.types import (
+from esg_fastapi.api.types import (
     LowerCased,
     MultiValued,
     SolrDoc,

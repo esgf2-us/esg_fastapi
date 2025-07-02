@@ -13,7 +13,7 @@ from starlette.middleware.base import RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
 
-from esg_fastapi.api.versions.v1.models import ESGSearchQuery
+from esg_fastapi.api.models import ESGSearchQuery
 from esg_fastapi.utils import get_current_trace_id, metadata
 
 logger = logging.getLogger(__name__)
