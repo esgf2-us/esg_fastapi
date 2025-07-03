@@ -39,7 +39,7 @@
         "fl": "*,score",
         "start": "0",
         "fq": "type:Dataset",
-        "rows": "0",
+        "rows": "10",
         "q": "version:[20250618 TO *]",
         "shards": "esgf-data-node-solr-query:8983/solr/datasets",
         "tie": "0.01",

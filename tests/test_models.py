@@ -1,4 +1,5 @@
 from contextlib import nullcontext as does_not_raise
+from datetime import datetime
 
 import pytest
 from pytest import raises
@@ -40,6 +41,41 @@ def test_GlobusSearchQuery_facet_creation(attr, source, expectation, comparison)
     with expectation:
         query = GlobusSearchQuery(**{attr: source}, limit=0, offset=0)
         assert getattr(query, attr) == comparison
+
+
+@pytest.mark.parametrize(
+    argnames="query_params",
+    argvalues=[
+        {"query": "frogblast:the vent:cores", "offset": 0, "limit": 0},
+        {"query": "frogblast:the vent:cores", "offset": 867, "limit": 5309},
+    ],
+)
+def test_GlobusSearchQuery_from_esg_search_query_meta_fields(query_params: dict) -> None:
+    """Ensure `GlobusSearchQuery.from_esg_search_query` correctly maps meta fields from `ESGSearchQuery`."""
+    esg_search_query = ESGSearchQuery(**query_params)
+    globus_query = GlobusSearchQuery.from_esg_search_query(esg_search_query)
+
+    assert globus_query.q == esg_search_query.query
+    assert globus_query.offset == esg_search_query.offset
+    assert globus_query.limit == esg_search_query.limit
+
+
+@pytest.mark.parametrize(
+    argnames=("name", "value", "expected_filter"),
+    argvalues=[
+        ("activity_id", "frogblast", {"type": "match_any", "field_name": "activity_id", "values": ["frogblast"]}),
+        ("min_version", 0, {"type": "range", "field_name": "version", "values": [{"from": 0, "to": "*"}]}),
+        ("max_version", 1, {"type": "range", "field_name": "version", "values": [{"from": "*", "to": 1}]}),
+        ("from_", 0, {"type": "range", "field_name": "_timestamp", "values": [{"from": datetime.fromisoformat("1970-01-01T00:00:00Z"), "to": "*"}]}),
+        ("to", 1, {"type": "range", "field_name": "_timestamp", "values": [{"from": "*", "to": datetime.fromisoformat("1970-01-01T00:00:01Z")}]}),
+    ],
+)
+def test_GlobusSearchQuery_from_esg_search_query_filter_fields(name: str, value: str, expected_filter: dict) -> None:
+    """Ensure `GlobusSearchQuery.from_esg_search_query` correctly maps filter fields from `ESGSearchQuery`."""
+    esg_search_query = ESGSearchQuery(**{name: value})
+    filter = GlobusSearchQuery.from_esg_search_query(esg_search_query).filters[0]
+
+    assert expected_filter == filter.model_dump()
 
 
 @pytest.mark.parametrize(("query_string", "should_be_set"), [("*", False), ("*:*", True)])

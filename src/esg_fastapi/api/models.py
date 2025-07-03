@@ -30,7 +30,7 @@ from pydantic import (
     computed_field,
     field_validator,
 )
-from pydantic_core import Url
+from pydantic_core import PydanticUndefined, Url
 
 from esg_fastapi.api.types import (
     ESGSearchFacetField,
@@ -67,9 +67,9 @@ class ESGSearchQueryBase(BaseModel):
     """The format of the response."""
     bbox: str | None = None
     """The geospatial search box [west, south, east, north]"""
-    offset: Annotated[int, Query(ge=0, le=9999)] = 0
+    offset: Annotated[int, Query(ge=0, le=9999)] | None = 0
     """The number of records to skip. Globus Search only allows from 0 to 9999, so we limit it to that range."""
-    limit: Annotated[int, Query(ge=0)] = 0
+    limit: Annotated[int, Query(ge=0)] | None = 10
     """The number of records to return"""
     replica: bool | None = None
     """Enable to include replicas in the search results"""
@@ -386,28 +386,26 @@ class GlobusSearchQuery(BaseModel):
     @classmethod
     def from_esg_search_query(cls, query: ESGSearchQuery) -> Self:
         """Create a new instance of `GlobusSearchResult` from an `ESGSearchQuery`."""
-        # Note: due to a bug in FastAPI's dependency system (https://github.com/fastapi/fastapi/discussions/9595),
-        # all fields that aren't provided as query params are set to `None`, which causes Pydantic to mark those
-        # fields as having been manually set, so we can't rely on `query.model_fields_set` to distinguish between
-        # unset and supplied as null (None).
         built_filters: list[GlobusFilter] = []
 
-        if query.min_version or query.max_version:
+        if {"min_version", "max_version"} & query.model_fields_set:
+            lower_bound = query.min_version if query.min_version is not None else PydanticUndefined
+            upper_bound = query.max_version if query.max_version is not None else PydanticUndefined
             built_filters.append(
                 GlobusRangeFilter(
                     field_name="version",
-                    values=[GlobusRange(from_=query.min_version or "*", to=query.max_version or "*")],
+                    values=[GlobusRange(from_=lower_bound, to=upper_bound)],
                 )
             )
 
-        if query.from_ or query.to:
+        if {"from_", "to"} & query.model_fields_set:
             built_filters.append(
                 GlobusRangeFilter(
                     field_name="_timestamp", values=[GlobusRange(from_=query.from_ or "*", to=query.to or "*")]
                 )
             )
 
-        for field, field_value in query.model_dump(exclude_none=True, include=query._queriable_fields()).items():
+        for field, field_value in query.model_dump(exclude_unset=True, include=query._queriable_fields()).items():
             if isinstance(field_value, str):
                 # "foo,bar.baz" -> ["foo", "bar", "baz"]  --  "foo" -> ["foo"]
                 field_value: list[str] = field_value.split(",")
@@ -420,7 +418,8 @@ class GlobusSearchQuery(BaseModel):
             constructed_fields["filters"] = built_filters
 
         for attr in ["limit", "offset", "facets"]:
-            if attr_value := getattr(query, attr, None):
+            attr_value = getattr(query, attr, None)
+            if attr_value is not None:
                 constructed_fields[attr] = attr_value
 
         # Although valid, Globus Search crashes with Metagrid's default query of `*`
