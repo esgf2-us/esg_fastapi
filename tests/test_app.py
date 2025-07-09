@@ -2,21 +2,22 @@ import json
 from unittest.mock import MagicMock
 
 import pytest
-from fastapi.testclient import TestClient
-from httpx import HTTPStatusError, Request, Response
+from httpx import HTTPStatusError, Request, Response, TimeoutException
 from starlette import status
+
+from tests.conftest import TestClient
 
 
 @pytest.mark.asyncio
 async def test_globus_search_timeout_error_handling(
-    test_client: TestClient, mocker: MagicMock, caplog: pytest.LogCaptureFixture
+    test_client: TestClient, mocker: MagicMock, caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Ensure that a timeout error from the Globus Search client is handled gracefully."""
-    mocker.patch.object(test_client.app.globus_client.client, "post", side_effect=TimeoutError("Connection timed out"))
+    mocker.patch.object(test_client.app.state.globus_client.client, "post", side_effect=TimeoutException("Connection timed out"))
     mocker.patch("esg_fastapi.api.globus.get_current_trace_id", return_value=8675309)
     caplog.set_level("ERROR", logger="esg_fastapi.api.globus")
     expected_response = {
-        "type": "TimeoutError",
+        "type": "TimeoutException",
         "title": "Timeout While Connecting to Globus Search",
         "status": status.HTTP_504_GATEWAY_TIMEOUT,
         "detail": "Connection timed out",
@@ -32,14 +33,14 @@ async def test_globus_search_timeout_error_handling(
 
 @pytest.mark.asyncio
 async def test_globus_search_http_status_error_handling(
-    test_client: TestClient, mocker: MagicMock, caplog: pytest.LogCaptureFixture
+    test_client: TestClient, mocker: MagicMock, caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Ensure that a non-200 status from the Globus Search client is handled gracefully."""
     mock_request = MagicMock(spec=Request)
     mock_response = MagicMock(spec=Response)
     mock_response.status_code = status.HTTP_429_TOO_MANY_REQUESTS
     mocker.patch.object(
-        test_client.app.globus_client.client,
+        test_client.app.state.globus_client.client,
         "post",
         side_effect=HTTPStatusError("HTTP Status Error", request=mock_request, response=mock_response),
     )

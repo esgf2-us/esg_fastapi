@@ -64,7 +64,7 @@ async def search(request: Request) -> RedirectResponse:
     return RedirectResponse(destination, status_code=status.HTTP_308_PERMANENT_REDIRECT)
 
 
-@router.get("/", name="root", response_model=ESGSearchResponse, dependencies=[CacheControlHeaders])
+@router.get("/", name="root", dependencies=[CacheControlHeaders])
 async def search_globus(request: Request, q: Annotated[ESGSearchQuery, Query()]) -> ESGSearchResponse:
     """Allows searching the ESGF Globus Index using the same query requests and responses as the old Solr based ESG Search application."""
     tags = {key: str(value) for key, value in q.model_dump(exclude_none=True).items()}
@@ -75,7 +75,7 @@ async def search_globus(request: Request, q: Annotated[ESGSearchQuery, Query()])
         # Globus Search is orders of magnitude faster when searching for rows or facets only vs rows and facets.
         # Its faster to do two separate queries and combine the results
         rows_query = globus_query.model_copy(update=WITHOUT_FACETS)
-        rows_response = await request.app.globus_client.search(rows_query)
+        rows_response = await request.app.state.globus_client.search(rows_query)
 
         validate_cache_request_directives(rows_response, request.headers)
 
@@ -83,7 +83,7 @@ async def search_globus(request: Request, q: Annotated[ESGSearchQuery, Query()])
 
         if globus_query.facets:
             facets_query = globus_query.model_copy(update=WITHOUT_ROWS)
-            facets_response = await request.app.globus_client.search(facets_query)
+            facets_response = await request.app.state.globus_client.search(facets_query)
             response_json["facet_results"] = facets_response.json()["facet_results"]
 
         globus_result = GlobusSearchResult.model_validate(response_json)

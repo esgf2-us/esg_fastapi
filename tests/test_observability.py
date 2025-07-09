@@ -53,8 +53,8 @@ def set_trace_header() -> dict[str, str]:
 
 
 @when("a request is sent upstream")
-def send_upstream(mock_globus_search: MockRouter):
-    pass
+def send_upstream() -> None:
+    """No-op."""
 
 
 @when("a response is returned to the client", target_fixture="response")

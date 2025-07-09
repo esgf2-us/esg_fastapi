@@ -11,7 +11,6 @@ Exportable = Annotated[T, "Exportable"]
 
 
 class ExportingModel(BaseModel):
-
     def model_post_init(self: Self, _) -> None:
         """Export any set model field values that are annotated with `Exportable` as environment variables.
 

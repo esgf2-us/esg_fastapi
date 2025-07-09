@@ -31,10 +31,10 @@ def test_cache_hits_are_tracked(test_client: TestClient, monkeypatch: pytest.Mon
 
 @pytest.mark.parametrize(
     ("exc_type",      "handlers",           "expectation"), [
-    (Exception, {Exception: AsyncMock()}, does_not_raise(),),
-    (KeyError,  {KeyError: AsyncMock()},  does_not_raise(),),
-    (Exception, {},                       pytest.raises(Exception),),
-    (KeyError,  {},                       pytest.raises(KeyError),),
+    (Exception, {Exception: AsyncMock()}, does_not_raise()),
+    (KeyError,  {KeyError: AsyncMock()},  does_not_raise()),
+    (Exception, {},                       pytest.raises(Exception)),
+    (KeyError,  {},                       pytest.raises(KeyError)),
     ],
 )  # fmt: skip
 @pytest.mark.asyncio

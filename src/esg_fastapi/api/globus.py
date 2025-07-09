@@ -5,7 +5,7 @@ import json
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Literal, Optional
+from typing import Any, Literal
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -55,7 +55,7 @@ class ThinSearchClient:
             timeout=60,  # Globus Search sometimes takes a while to respond, so we set a longer timeout
         )
         self.search_url = f"https://search.api.globus.org/v1/index/{settings.globus.search_index}/search"
-        self.access_token: Optional[str] = None
+        self.access_token: str | None = None
 
     @property
     def auth_header(self) -> dict[Literal["Authorization"], str]:
@@ -88,45 +88,38 @@ def find_search_token(token_response: GlobusTokenResponse) -> GlobusToken:
     raise RuntimeError("Token response did not contain a search token")
 
 
-class FastAPIWithSearchClient(FastAPI):
-    """FastAPI app with a globus_client."""
-
-    def __init__[**P](self, *args: P.args, **kwargs: P.kwargs) -> None:
-        """Initializes the FastAPI app with a Globus Search client."""
-        super().__init__(*args, **kwargs)
-        self.globus_client = ThinSearchClient()
-
-
-async def keep_token_fresh(app: FastAPIWithSearchClient) -> None:
+async def keep_token_fresh(app: FastAPI) -> None:
     """Keep the Globus Search token fresh by renewing it periodically."""
-    logger.info("Renewing Globus Search token")
-    token_response = await app.globus_client.client.post(
-        "https://auth.globus.org/v2/oauth2/token",
-        auth=(settings.globus.client_id, settings.globus.client_secret),
-        data={"grant_type": "client_credentials", "scope": "urn:globus:auth:scope:search.api.globus.org:search"},
-        extensions={"cache_disabled": True},
-    )
-    search_token: GlobusToken = find_search_token(token_response.json())
-    app.globus_client.access_token = search_token["access_token"]
-    next_renewal = search_token["expires_in"] - 60  # seconds
-    logger.debug("Will renew Globus Search token in %d seconds", next_renewal)
-    loop = asyncio.get_event_loop()
-    loop.call_later(next_renewal, keep_token_fresh, app)
+    while True:
+        logger.info("Renewing Globus Search token")
+        token_response = await app.state.globus_client.client.post(
+            "https://auth.globus.org/v2/oauth2/token",
+            auth=(settings.globus.client_id, settings.globus.client_secret),
+            data={"grant_type": "client_credentials", "scope": "urn:globus:auth:scope:search.api.globus.org:search"},
+            extensions={"cache_disabled": True},
+        )
+        search_token: GlobusToken = find_search_token(token_response.json())
+        app.state.globus_client.access_token = search_token["access_token"]
+
+        logger.debug("Will renew Globus Search token in %d seconds", settings.globus.token_renewal_interval)
+        await asyncio.sleep(settings.globus.token_renewal_interval)
 
 
 @asynccontextmanager
-async def token_renewal_watchdog(app: FastAPIWithSearchClient) -> AsyncGenerator[None, None]:
+async def lifespan_manager(app: FastAPI) -> AsyncGenerator[None, Any]:
     """If Globus credentials are set, start a background task to keep the token fresh."""
     if settings.globus.client_id and settings.globus.client_secret:
-        sleeper = asyncio.create_task(keep_token_fresh(app))
-        yield
-        sleeper.cancel()
+        renewer = asyncio.create_task(keep_token_fresh(app))
     else:
+        renewer = asyncio.Future()
         logger.warning("Globus client ID and secret not set, skipping token renewal.")
-        yield
+
+    yield
+
+    renewer.cancel()
 
 
-async def handle_upstream_timeout(request: Request, exc: TimeoutException) -> JSONResponse:
+async def handle_upstream_timeout(_: Request, exc: TimeoutException) -> JSONResponse:
     """Handle timeout errors to the Globus Search service."""
     error_response = {
         "type": type(exc).__name__,

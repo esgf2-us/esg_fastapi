@@ -74,8 +74,8 @@ class ESGFLogging(LoggingConfig):
                 "datefmt": "[%Y-%m-%d %H:%M:%S %z]",
                 "style": "%",
                 "format": DEFAULT_LOGGING_FORMAT,
-            }
-        )
+            },
+        ),
     }
     handlers: OptionalModelDict[Handler] = {
         "stdout": Handler.model_validate({"formatter": "otel", "stream": "ext://sys.stdout"}),
@@ -87,7 +87,7 @@ class ESGFLogging(LoggingConfig):
         "httpcore": {"handlers": ["stdout"], "level": "INFO"},
     }
     root: OptionalModel[LoggerModel] = LoggerModel.model_validate(
-        {"handlers": ["stdout"], "level": "DEBUG", "propagate": True}
+        {"handlers": ["stdout"], "level": "DEBUG", "propagate": True},
     )
 
     def model_post_init(self: Self, __context) -> None:
