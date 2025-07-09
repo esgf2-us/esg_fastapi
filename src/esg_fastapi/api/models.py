@@ -71,7 +71,7 @@ class ESGSearchQueryBase(BaseModel):
     """The geospatial search box [west, south, east, north]"""
     offset: OptionalParam[int] = Query(0, ge=0, le=9999)
     """The number of records to skip. Globus Search only allows from 0 to 9999, so we limit it to that range."""
-    limit: OptionalParam[int] =  Query(10, ge=0)
+    limit: OptionalParam[int] = Query(10, ge=0)
     """The number of records to return"""
     replica: OptionalParam[bool] = None
     """Enable to include replicas in the search results"""
@@ -105,22 +105,22 @@ class ESGSearchQuery(ESGSearchQueryBase):
     id: OptionalParam[str] = Query(
         None,
         title="Record ID",
-        description="Unique identifier for a dataset or file record in the ESGF archive. This can be a `dataset_id` or a `file ID`. "
-        "<sup>1</sup><br><br><small><sup>1</sup>: [ESGF Search Documentation](https://esgf-node.llnl.gov/esgf_docs/search_api.html)</small>",
+        description="Unique identifier for a dataset or file record in the ESGF archive<sup>1</sup><br><br>."
+        "<small><sup>1</sup>: [ESGF Search Documentation](https://esgf-node.llnl.gov/esgf_docs/search_api.html)</small>",
         openapi_examples={
             "CMIP5 Example": {
-                "summary": "CMIP5 Record ID",
+                "summary": "CMIP5 Dataset Record ID",
                 "description": "An example of a CMIP5 dataset ID.",
-                "value": "cmip5.output1.BCC.bcc-csm1-1.historical.mon.atmos.Amon.r1i1p1.tas.20120709",
+                "value": "cmip5.output1.BCC.bcc-csm1-1.historical.mon.atmos.Amon.r1i1p1.v1|esgf-node.ornl.gov",
             },
             "CMIP6 Example": {
-                "summary": "CMIP6 Record ID",
+                "summary": "CMIP6 File Record ID",
                 "description": "An example of a CMIP6 file ID.",
-                "value": "CMIP6.CMIP.IPSL.IPSL-CM6A-LR.historical.r1i1p1f1.Amon.tas.gr.v20190801"
-                ".tas_Amon_IPSL-CM6A-LR_historical_r1i1p1f1_gr_185001-201412.nc",
+                "value": "CMIP6.PAMIP.CNRM-CERFACS.CNRM-CM6-1.pdSST-pdSIC.r281i1p1f2.Amon.rlutcs.gr.v20210127.rlutcs_Amon_CNRM-CM6-1_pdSST"
+                "-pdSIC_r281i1p1f2_gr_200004-200105.nc",
             },
             "obs4MIPs Example": {
-                "summary": "obs4MIPs Record ID",
+                "summary": "obs4MIPs Dataset Record ID",
                 "description": "An example of an obs4MIPs dataset ID.",
                 "value": "obs4MIPs.NASA-GSFC.GPCP-Monthly-3-2.mon.pr.gn.v20231205|esgf-data2.llnl.gov",
             },
@@ -1272,15 +1272,10 @@ class GlobusSearchQuery(BaseModel):
         """
         if value is None or is_sequence_of(value, GlobusFacet):
             return value
-
-        if isinstance(value, str):
-            return [
-                GlobusFacet(name=facet.strip(), field_name=facet.strip(), type="terms") for facet in value.split(",")
-            ]
-
-        raise ValueError(
-            f"Expected input convertible to Sequence[GlobusFacet] one of {get_args(SupportedAsFacets)}, got {type(value)}"
-        )
+        elif isinstance(value, str):
+            return [GlobusFacet(name=facet.strip(), field_name=facet.strip(), type="terms") for facet in value.split(",")]
+        else:
+            raise ValueError(f"Expected input convertible to Sequence[GlobusFacet] one of {get_args(SupportedAsFacets)}, got {type(value)}")
 
     @classmethod
     def from_esg_search_query(cls, query: ESGSearchQuery) -> Self:
