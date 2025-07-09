@@ -15,7 +15,7 @@ def app_factory() -> FastAPIWithSearchClient:
         lifespan=token_renewal_watchdog,
     )
 
-    api.include_router(router, tags=["Search"])
+    api.include_router(router)
     FastAPIInstrumentor.instrument_app(app=api)
 
     api.add_exception_handler(TimeoutError, handle_upstream_timeout)
