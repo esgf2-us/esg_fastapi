@@ -36,7 +36,7 @@ ruff = "^0.12.1"
 datamodel-code-generator = { extras = ["http"], version = "^0.31.2" }
 pytest-asyncio = "^1.0.0"
 respx = "^0.22.0"
-fastapi = { extras = ["standard"], version = "^0.115.14" }
+fastapi = { extras = ["standard"], version = "^0.116.0" }
 
 [tool.ruff]
 line-length = 120
