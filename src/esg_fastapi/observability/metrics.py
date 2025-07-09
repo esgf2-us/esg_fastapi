@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 
 ESG_FASTAPI = Info("fastapi_app", "FastAPI application information.").info(
     {
-        "app_name": metadata['name'],
-        "version": metadata['version'],
-    }
+        "app_name": metadata["name"],
+        "version": metadata["version"],
+    },
 )
 EXCEPTIONS = Counter(
     "fastapi_exceptions_total",
@@ -50,13 +50,14 @@ REQUESTS_PROCESSING_TIME = Histogram(
 QUERY_FACETS = Counter(
     "esg_bridge_faceted_queries_total",
     "Total count of queries by facet",
-    [facet for facet in ESGSearchQuery._queriable_fields()],
+    ESGSearchQuery._queriable_fields(),
 )
 
 CACHE_HITS = Counter(
     "esg_bridge_cache_hits_total",
     "Total count of cache hits",
 )
+
 
 async def track_prometheus_metrics(request: Request, call_next: RequestResponseEndpoint) -> Response:
     """A middleware function that tracks Prometheus metrics for incoming requests and responses.
@@ -110,5 +111,4 @@ async def track_exceptions(request: Request, exc: Exception) -> Response:
     EXCEPTIONS.labels(exception_type=type(exc).__name__).inc(exemplar={"TraceID": get_current_trace_id()})
     if handler := request.app.exception_handlers.get(exc):
         return await handler(request, exc)
-    else:
-        raise exc
+    raise exc

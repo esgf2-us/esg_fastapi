@@ -22,7 +22,7 @@ dependencies = [
   "pydantic>=2.11.7",
   "pyroscope-otel>=0.4.1",
   "hishel>=0.1.2",
-  "prometheus-client>=0.22.1"
+  "prometheus-client>=0.22.1",
 ]
 requires-python = ">=3.11"
 
@@ -42,25 +42,8 @@ fastapi = { extras = ["standard"], version = "^0.115.14" }
 line-length = 120
 
 [tool.ruff.lint]
-select = [
-  "E4",
-  "E7",
-  "E9",
-  "F",
-  "D",
-  "UP",
-  "ANN",
-  "ASYNC",
-  "S",
-  "B",
-  "T20",
-  "PT",
-  "SIM",
-  "TCH",
-  "PTH",
-  "TD",
-  "PL",
-]
+select = ["ALL"]
+
 ignore = [
   "ANN102", # ignore deprecated hints for cls arg in @classmethods
   "TD002",  # don't require author on TODO's
@@ -72,8 +55,9 @@ convention = "google"
 [tool.ruff.per-file-ignores]
 # Ignore `S101` (Use of `assert` detected) in tests.
 # Ignore `D100` (Missing docstring in public module) in tests.
+# Ignore `FBT001` (Boolean-typed positional argument in function definition) in tests.
 "tests/*" = ["S101", "D100"]
-"test_*.py" = ["S101"]
+"test_*.py" = ["S101", "FBT001"]
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"

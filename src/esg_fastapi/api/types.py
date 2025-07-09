@@ -4,15 +4,13 @@ from typing import TYPE_CHECKING, Annotated, Any, ForwardRef, Literal, TypedDict
 
 from annotated_types import T
 from fastapi import Query
-from pydantic import AfterValidator, BeforeValidator, PlainSerializer
+from pydantic import BeforeValidator, PlainSerializer
 
 from esg_fastapi.utils import ensure_list
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .models import ESGSearchQuery, GlobusFacet, GlobusFilter, GlobusMetaResult
+    from .models import GlobusFacet, GlobusFilter
 else:
-    GlobusMetaResult = ForwardRef("GlobusMetaResult")
-    ESGSearchQuery = ForwardRef("ESGSearchQuery")
     GlobusFacet = ForwardRef("GlobusFacet")
     GlobusFilter = ForwardRef("GlobusFilter")
 

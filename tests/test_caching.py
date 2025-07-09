@@ -2,11 +2,12 @@ from typing import Literal
 
 import httpx
 from fastapi import status
-from fastapi.testclient import TestClient
 from pytest_bdd import given, scenarios, then, when
 from pytest_bdd.parsers import parse
 from pytest_mock import MockFixture
 from respx import MockRouter
+
+from tests.conftest import TestClient
 
 scenarios("Caching")
 
@@ -32,7 +33,7 @@ def cached_request(test_client: TestClient) -> httpx.Response:
 @when("the cache_key does not match the provided etag", target_fixture="etag_header")
 def mismatch_etag(etag_header: EtagHeader) -> EtagHeader:
     """Make the ETag header mismatch with the cached query."""
-    return {key: "some_other_cache_key" for key in etag_header}
+    return dict.fromkeys(etag_header, "some_other_cache_key")
 
 
 @then(parse("it should return status code <{status_attr}>"))
@@ -48,7 +49,6 @@ def check_return_status(status_attr: str, etag_header: EtagHeader, test_client: 
 @given("that all ESGF data is public")
 def noop() -> None:
     """Holder for Cucumber directives that don't require any actions."""
-    pass
 
 
 @then("the <public> cache control directive should be set")
@@ -66,7 +66,7 @@ def check_directive(basic_response: httpx.Response, directive: str, value: int) 
 @then("the Globus Search response should be added to the local cache")
 def verify_cached(test_client: TestClient, mocker: MockFixture) -> None:
     """Verify the response was served from the cache."""
-    spy = mocker.spy(test_client.app.globus_client, name="search")
+    spy = mocker.spy(test_client.app.state.globus_client, name="search")
 
     test_client.get(url="/")
 

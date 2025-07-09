@@ -1,6 +1,5 @@
 """Configuration settings for Globus Search."""
 
-from typing import Optional
 from uuid import UUID
 
 from pydantic import UUID4, BaseModel, Field
@@ -17,5 +16,8 @@ class GlobusSettings(BaseModel):
         description="The ID of the Globus Search Index to which queries will be submitted. The default is the ORNL Globus Search Index.",
     )
 
-    client_id: Optional[str] = None
-    client_secret: Optional[str] = None
+    client_id: str | None = None
+    client_secret: str | None = None
+
+    token_renewal_interval: float = 60 * 60  # seconds
+    """The interval in seconds at which the Globus Search token should be renewed."""

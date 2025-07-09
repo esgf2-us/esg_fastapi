@@ -1,21 +1,20 @@
+import asyncio
 from unittest.mock import MagicMock
 
 import httpx
 import pytest
-from fastapi.testclient import TestClient
 from pytest_mock import MockFixture
 from respx import MockRouter
 
 from esg_fastapi import settings
 from esg_fastapi.api.globus import (
-    FastAPIWithSearchClient,
     ThinSearchClient,
     find_search_token,
-    keep_token_fresh,
-    token_renewal_watchdog,
 )
+from esg_fastapi.api.main import app_factory
 from esg_fastapi.api.models import GlobusSearchQuery
 from esg_fastapi.api.types import GlobusToken, GlobusTokenResponse
+from tests.conftest import TestClient
 
 
 @pytest.fixture
@@ -71,7 +70,10 @@ async def test_search_accepts_globus_search_query(globus_client: ThinSearchClien
 @pytest.mark.asyncio
 @pytest.mark.parametrize(("auth_token", "outcome"), [("test_token", True), (None, False)])
 async def test_search_optional_authentication(
-    globus_client: ThinSearchClient, mocker: MockFixture, auth_token: str, outcome: bool
+    globus_client: ThinSearchClient,
+    mocker: MockFixture,
+    auth_token: str,
+    outcome: bool,
 ) -> None:
     """Ensure Authorization header is set only if an access_token is set."""
     globus_client.access_token = auth_token
@@ -155,12 +157,13 @@ async def test_find_search_token_missing_raises() -> None:
 
 
 @pytest.mark.asyncio
-async def test_keep_token_fresh(respx_mock: MockRouter, mocker: MagicMock, test_client: TestClient) -> None:
+async def test_token_refreshing(respx_mock: MockRouter, mocker: MagicMock, test_client: TestClient) -> None:
     """keep_token_fresh sets the access token on the globus_client."""
-    mocker.patch.object(settings.globus, "client_id", "client_id")
-    mocker.patch.object(settings.globus, "client_secret", "client_secret")
-    globus_token: GlobusTokenResponse = {
-        "access_token": "search_access_token",
+    mocker.patch.object(settings.globus, "client_id", "some_client_id")
+    mocker.patch.object(settings.globus, "client_secret", "some_client_secret")
+    mocker.patch.object(settings.globus, "token_renewal_interval", 0.1)
+    first_globus_token: GlobusTokenResponse = {
+        "access_token": "first_access_token",
         "expires_in": 12345,
         "id_token": "main_id_token",
         "resource_server": "search.api.globus.org",
@@ -169,55 +172,64 @@ async def test_keep_token_fresh(respx_mock: MockRouter, mocker: MagicMock, test_
         "token_type": "bearer",
         "other_tokens": [],
     }
-    respx_mock.post("https://auth.globus.org/v2/oauth2/token").return_value = httpx.Response(200, json=globus_token)
-    app = test_client.app
+    second_globus_token: GlobusTokenResponse = {
+        "access_token": "second_access_token",
+        "expires_in": 12345,
+        "id_token": "main_id_token",
+        "resource_server": "search.api.globus.org",
+        "scope": "main_scope",
+        "state": "main_state",
+        "token_type": "bearer",
+        "other_tokens": [],
+    }
+    respx_mock.post("https://auth.globus.org/v2/oauth2/token", name="refresh_token").side_effect = [
+        httpx.Response(200, json=first_globus_token),
+        httpx.Response(200, json=second_globus_token),
+    ]
 
-    await keep_token_fresh(app)
+    spy = mocker.spy(test_client.app.state.globus_client.client, "post")
 
-    assert app.globus_client.access_token == "search_access_token"
+    with test_client as client:
+        # Initializing the app (via context manager) should call the refresh endpoint
+        assert respx_mock.routes["refresh_token"].call_count == 1
+        # The access token should be set on the globus_client
+        assert client.app.state.globus_client.access_token == "first_access_token"
+        # The request to the token endpoint should disable cached responses
+        spy.assert_called_with(
+            url="https://auth.globus.org/v2/oauth2/token",
+            auth=("some_client_id", "some_client_secret"),
+            data={"grant_type": "client_credentials", "scope": "urn:globus:auth:scope:search.api.globus.org:search"},
+            extensions={"cache_disabled": True},
+        )
 
+        await asyncio.sleep(0.2)  # Allow the token to be refreshed
 
-@pytest.mark.asyncio
-async def test_token_requests_are_never_cached(
-    mocker: MagicMock, test_client: TestClient, respx_mock: MockRouter
-) -> None:
-    """The token requests should never be cached."""
-    mocker.patch.object(settings.globus, "client_id", "some_client_id")
-    mocker.patch.object(settings.globus, "client_secret", "some_client_secret")
-    spy = mocker.spy(test_client.app.globus_client.client, "post")
-    respx_mock.post("https://auth.globus.org/v2/oauth2/token").return_value = httpx.Response(
-        200,
-        json={
-            "access_token": "search_access_token",
-            "expires_in": 12345,
-            "resource_server": "search.api.globus.org",
-        },
-    )
-
-    await keep_token_fresh(test_client.app)
-
-    spy.assert_called_once_with(
-        url="https://auth.globus.org/v2/oauth2/token",
-        auth=("some_client_id", "some_client_secret"),
-        data={"grant_type": "client_credentials", "scope": "urn:globus:auth:scope:search.api.globus.org:search"},
-        extensions={"cache_disabled": True},
-    )
+        # After the sleep, the token should have been refreshed again
+        assert respx_mock.routes["refresh_token"].call_count == 2
+        # And set with the new access token
+        assert client.app.state.globus_client.access_token == "second_access_token"
+        # And still not cached
+        spy.assert_called_with(
+            url="https://auth.globus.org/v2/oauth2/token",
+            auth=("some_client_id", "some_client_secret"),
+            data={"grant_type": "client_credentials", "scope": "urn:globus:auth:scope:search.api.globus.org:search"},
+            extensions={"cache_disabled": True},
+        )
 
 
 @pytest.mark.asyncio
 async def test_token_renewal_watchdog_with_credentials(mocker: MagicMock) -> None:
-    """Watchdog renews the access token and schedules the next renewal 1min before expiration."""
-    mocker.patch.object(settings.globus, "client_id", "client_id")
-    mocker.patch.object(settings.globus, "client_secret", "client_secret")
+    """Watchdog schedules a task to keep the token fresh if app credentials are set."""
+    mocker.patch.object(settings.globus, "client_id", "some_client_id")
+    mocker.patch.object(settings.globus, "client_secret", "some_client_secret")
+
     mock_renewer = mocker.patch("esg_fastapi.api.globus.keep_token_fresh")
-    mock_app = MagicMock(spec=FastAPIWithSearchClient, globus_client=MagicMock(spec=ThinSearchClient))
     mock_scheduler = mocker.patch("esg_fastapi.api.globus.asyncio.create_task")
 
-    async with token_renewal_watchdog(mock_app):
-        pass
-
-    mock_scheduler.assert_called_once()
-    mock_renewer.assert_called_once_with(mock_app)
+    app = app_factory()
+    with TestClient(app):
+        mock_scheduler.assert_called_once()
+        mock_renewer.assert_called_once_with(app)
 
 
 @pytest.mark.asyncio
@@ -225,12 +237,11 @@ async def test_token_renewal_watchdog_without_credentials(mocker: MagicMock) -> 
     """Watchdog does not attempt to renew if app credentials are not set."""
     mocker.patch.object(settings.globus, "client_id", None)
     mocker.patch.object(settings.globus, "client_secret", None)
+
     mock_renewer = mocker.patch("esg_fastapi.api.globus.keep_token_fresh")
-    mock_app = MagicMock(spec=FastAPIWithSearchClient, globus_client=MagicMock(spec=ThinSearchClient))
     mock_scheduler = mocker.patch("esg_fastapi.api.globus.asyncio.create_task")
 
-    async with token_renewal_watchdog(mock_app):
-        pass
-
-    mock_renewer.assert_not_called()
-    mock_scheduler.assert_not_called()
+    app = app_factory()
+    with TestClient(app):
+        mock_scheduler.assert_not_called()
+        mock_renewer.assert_not_called()

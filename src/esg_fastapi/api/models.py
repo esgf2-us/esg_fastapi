@@ -374,14 +374,15 @@ class GlobusSearchQuery(BaseModel):
         """
         if value is None or is_sequence_of(value, GlobusFacet):
             return value
-        elif isinstance(value, str):
+
+        if isinstance(value, str):
             return [
                 GlobusFacet(name=facet.strip(), field_name=facet.strip(), type="terms") for facet in value.split(",")
             ]
-        else:
-            raise ValueError(
-                f"Expected input convertible to Sequence[GlobusFacet] one of {get_args(SupportedAsFacets)}, got {type(value)}"
-            )
+
+        raise ValueError(
+            f"Expected input convertible to Sequence[GlobusFacet] one of {get_args(SupportedAsFacets)}, got {type(value)}"
+        )
 
     @classmethod
     def from_esg_search_query(cls, query: ESGSearchQuery) -> Self:
@@ -394,8 +395,8 @@ class GlobusSearchQuery(BaseModel):
             built_filters.append(
                 GlobusRangeFilter(
                     field_name="version",
-                    values=[GlobusRange(from_=lower_bound, to=upper_bound)],
-                )
+                    values=[GlobusRange(from_=lower_bound, to=upper_bound)],  # type: ignore[reportArgumentType]
+                ),
             )
 
         if {"from_", "to"} & query.model_fields_set:
@@ -560,7 +561,7 @@ class ESGSearchResultParams(BaseModel):
     """
     The `indent` attribute is a boolean flag indicating whether to indent the JSON response. Its default value is `"true"`.
     """
-    echoParams: str = "all"
+    echoParams: str = "all"  # noqa: N815
     """
     A boolean flag indicating whether to echo the parameters in the response. Its default value is "all".
     """
@@ -645,7 +646,7 @@ class ESGSearchHeader(BaseModel):
 class ESGSearchResult(BaseModel):
     """Represents a search result from ESG Search."""
 
-    numFound: int
+    numFound: int  # noqa: N815
     """Number of documents found."""
     start: int
     """Starting index for the search results."""
@@ -722,7 +723,7 @@ class ESGSearchResponse(BaseModel):
             facet_counts=ESGFSearchFacetResult.from_globus_facet_result(result.facet_results),
         )
 
-    responseHeader: ESGSearchHeader
+    responseHeader: ESGSearchHeader  # noqa: N815
     """Represents the response header for the ESG Search Response."""
     response: ESGSearchResult
     """Represents a search result from ESG Search."""

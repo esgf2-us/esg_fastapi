@@ -46,17 +46,17 @@ def one_or_list(value: Sequence[T] | T) -> T | Sequence[T]:
     return value[0] if isinstance(value, list) and len(value) == 1 else value
 
 
-def ensure_list(value: T) -> T | list[T]:
-    """If value is a list, return as is. Otherwise, wrap it in a list.
+def ensure_list(value: T) -> T | Sequence[T]:
+    """If value is a sequence, return as is. Otherwise, wrap it in a sequence.
 
     Args:
-        value (T): The value to be ensured as a list.
+        value (T): The value to be ensured as a sequence.
 
     Returns:
-        list: Either the original list passed in, or the passed value wrapped in a list. Comma separated strings will be split on "," and returned.
+        Sequence: Either the original sequence passed in, or the passed value wrapped in a sequence. Comma separated strings will be split on "," and returned.
 
     Raises:
-        TypeError: If the passed value is not a list and cannot be converted to one.
+        TypeError: If the passed value is not a sequence and cannot be converted to one.
 
     Examples:
         >>> ensure_list(123)
@@ -105,7 +105,7 @@ def format_fq_field(field: tuple[str, Any]) -> str:
     # "CMIP5,TAMIP,EUCLIPSE,LUCID,GeoMIP,PMIP" -> project:"CMIP5" || project:"TAMIP" || project:"EUCLIPSE" || project:"LUCID" || project:"GeoMIP" || project:"PMIP3"
 
     return " || ".join(
-        [f"{key}:{quote_str(term) if key not in non_quoted_fields else term}" for term in ensure_list(value)]
+        [f"{key}:{quote_str(term) if key not in non_quoted_fields else term}" for term in ensure_list(value)],
     )
 
 

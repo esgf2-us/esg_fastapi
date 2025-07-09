@@ -39,7 +39,7 @@ def load_example(query_example: Path) -> SearchParityFixture:
 
 @when("the request is sent to ESG FastAPI", target_fixture="responses")
 def send_request(
-    json_example: SearchParityFixture, mock_globus_search: MockRouter, test_client: TestClient
+    json_example: SearchParityFixture, mock_globus_search: MockRouter, test_client: TestClient,
 ) -> ComparisonFixture:
     """Send request to ESG FastAPI and add its response to the fixture."""
     mock_globus_search.routes["post_search"].respond(200, json=json_example["globus_response"], headers={"server-timing": 'total=111.84; "total"'})
