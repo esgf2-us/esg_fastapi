@@ -60,7 +60,7 @@ jobs:
           yq -Y -i ".version = \"$GENERATED_VERSION\"" helm/Chart.yaml
           echo "generated-semver=$GENERATED_VERSION" >> $GITHUB_OUTPUT
       - name: Chart | Push
-        uses: appany/helm-oci-chart-releaser@v0.4.2
+        uses: appany/helm-oci-chart-releaser@v0.5.0
         with:
           name: esgf-1-5-bridge
           repository: esgf2-us/charts
