@@ -23,7 +23,6 @@ logger = logging.getLogger()
 router = APIRouter()
 
 
-
 def set_cache_control_headers(response: Response) -> None:
     """Set the cache-control directives for the response."""
     response.headers["cache-control"] = "public max-age=300 stale-while-revalidate=300 stale-if-error=300"
@@ -56,15 +55,17 @@ def validate_cache_request_directives(response: httpx.Response, headers: Headers
 WITHOUT_ROWS = {"limit": 0}
 WITHOUT_FACETS = {"facets": []}
 
-
-@router.get("/search")
-async def search(request: Request) -> RedirectResponse:
-    """Redirects to the root path for esgf-pyclient compatibility."""
-    destination = request.url_for("root").include_query_params(**request.query_params)
-    return RedirectResponse(destination, status_code=status.HTTP_308_PERMANENT_REDIRECT)
+code_samples = [{"lang": "Shell", "label": "curl", "source": "curl --location --request GET http://localhost:8000/"}]
 
 
-@router.get("/", name="root", dependencies=[CacheControlHeaders])
+@router.get(
+    "/",
+    name="search",
+    operation_id="search",
+    dependencies=[CacheControlHeaders],
+    tags=["Search"],
+    openapi_extra={"x-codeSamples": code_samples},
+)
 async def search_globus(request: Request, q: Annotated[ESGSearchQuery, Query()]) -> ESGSearchResponse:
     """Allows searching the ESGF Globus Index using the same query requests and responses as the old Solr based ESG Search application."""
     tags = {key: str(value) for key, value in q.model_dump(exclude_none=True).items()}
@@ -89,3 +90,12 @@ async def search_globus(request: Request, q: Annotated[ESGSearchQuery, Query()])
         globus_result = GlobusSearchResult.model_validate(response_json)
 
         return ESGSearchResponse.from_results(q, rows_response.extensions["globus_timings"]["total"], globus_result)
+
+
+@router.get("/search", deprecated=True, status_code=status.HTTP_308_PERMANENT_REDIRECT, tags=["Compatibility"])
+async def search(request: Request) -> RedirectResponse:
+    """Redirects to the root path for esgf-pyclient compatibility."""
+    # Note the `/` route is actually named `search` so that it shows up correctly in the OpenAPI docs, so we get the URL `search` route here.
+    # Note 2: The standard RedirectResponse does not include query parameters, so we need to manually construct the URL.
+    destination = request.url_for("search").include_query_params(**request.query_params)
+    return RedirectResponse(destination, status_code=status.HTTP_308_PERMANENT_REDIRECT)

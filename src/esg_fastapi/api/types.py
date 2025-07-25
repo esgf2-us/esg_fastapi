@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Annotated, Any, ForwardRef, Literal, TypedDict
 from annotated_types import T
 from fastapi import Query
 from pydantic import BeforeValidator, PlainSerializer
+from pydantic.json_schema import SkipJsonSchema
 
 from esg_fastapi.utils import ensure_list
 
@@ -20,6 +21,9 @@ Stringified = Annotated[T, PlainSerializer(str)]
 
 MultiValued = Annotated[list[T], BeforeValidator(ensure_list), Query()]
 """Solr MultiValued Field of the parameterized type."""
+
+OptionalParam = T | SkipJsonSchema[None]
+"""FastAPI doesn't generate OpenAPI schema correctly for optional parameters, ref: https://github.com/pydantic/pydantic/pull/6653"""
 
 LowerCased = Annotated[T, PlainSerializer(lambda x: str(x).lower())]
 """Lower-case string representation of the parameterized type."""
