@@ -354,7 +354,7 @@ class GlobusFacet(BaseModel):
     """The type of facet."""
     field_name: str
     """The name of the field to facet on."""
-    size: int = 1_000_000  # GS now limits each facet to 10M but 50M across all facets
+    size: int = 5_000  # GS now limits each facet to 10M but 50M across all facets, they asked us to reduce to 5k
     """The number of distinct facet values (buckets) to return."""
 
 
