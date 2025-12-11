@@ -354,7 +354,7 @@ class GlobusFacet(BaseModel):
     """The type of facet."""
     field_name: str
     """The name of the field to facet on."""
-    size: int = 2_000_000_000  # Globus Search has an undocumented default of 10, no way to say "all". GS dies if too high, somewhere between 2_000_000_000 and 5_000_000_000
+    size: int = 5_000  # GS now limits each facet to 10M but 50M across all facets, they asked us to reduce to 5k
     """The number of distinct facet values (buckets) to return."""
 
 
